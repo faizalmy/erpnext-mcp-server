@@ -1,12 +1,7 @@
-"""AI-ERP MCP Server — entry point.
+"""erpnext-mcp-server — MCP server for ERPNext.
 
-This is the thin Layer 1 of the two-layer architecture:
-- Defines MCP tools (what the agent can call)
-- Forwards all calls to the AI-ERP Gateway (Layer 2)
-- Returns structured responses with ai_context
-
-The server has ZERO business logic — no auth, no approval engine,
-no ERPNext client, no statutory validation. All of that lives in the gateway.
+Standalone MCP server that connects directly to any ERPNext instance.
+No gateway, no business logic — just tool definitions and ERPNext API calls.
 
 Usage:
     python -m src.server          # stdio transport (default)
@@ -19,20 +14,18 @@ from mcp.server.fastmcp import FastMCP
 
 from .tools import (
     documents, accounting, selling, buying, stock,
-    hr, manufacturing, projects, assets, approvals,
+    hr, manufacturing, projects, assets,
 )
 
 # ── MCP Server ────────────────────────────────────────────────
 
 mcp = FastMCP(
-    "ai-erp",
+    "erpnext",
     instructions=(
-        "AI-ERP: AI-native ERP for Malaysian SMEs. "
-        "Financial operations require human approval before execution. "
-        "All monetary values are in MYR. "
-        "SST 8% is applied automatically by ERPNext. "
-        "Use list_intents to check pending approvals. "
-        "Use approve_intent or reject_intent to act on them."
+        "ERPNext MCP Server: AI-native interface to ERPNext. "
+        "All monetary values are in the company's default currency. "
+        "Use list_documents for generic DocType queries. "
+        "Use specialized tools (create_sales_invoice, etc.) for domain operations."
     ),
 )
 
@@ -47,7 +40,6 @@ hr.register(mcp)
 manufacturing.register(mcp)
 projects.register(mcp)
 assets.register(mcp)
-approvals.register(mcp)
 
 # ── MCP Resources (read-only structured data) ─────────────────
 
@@ -55,15 +47,15 @@ approvals.register(mcp)
 @mcp.resource("erpnext://companies")
 def list_companies() -> dict:
     """List all companies in ERPNext."""
-    from .gateway import gateway
-    return gateway.list_documents("Company", fields=["name", "country", "default_currency"])
+    from .erpnext_client import erpnext
+    return erpnext.list_documents("Company", fields=["name", "country", "default_currency"])
 
 
 @mcp.resource("erpnext://customers")
 def list_customers() -> dict:
     """List all customers."""
-    from .gateway import gateway
-    return gateway.list_documents(
+    from .erpnext_client import erpnext
+    return erpnext.list_documents(
         "Customer",
         fields=["name", "customer_name", "territory", "customer_group"],
         limit=50,
@@ -73,8 +65,8 @@ def list_customers() -> dict:
 @mcp.resource("erpnext://suppliers")
 def list_suppliers() -> dict:
     """List all suppliers."""
-    from .gateway import gateway
-    return gateway.list_documents(
+    from .erpnext_client import erpnext
+    return erpnext.list_documents(
         "Supplier",
         fields=["name", "supplier_name", "supplier_group"],
         limit=50,
@@ -84,8 +76,8 @@ def list_suppliers() -> dict:
 @mcp.resource("erpnext://items")
 def list_items() -> dict:
     """List all items (products/services)."""
-    from .gateway import gateway
-    return gateway.list_documents(
+    from .erpnext_client import erpnext
+    return erpnext.list_documents(
         "Item",
         fields=["name", "item_name", "item_group", "standard_rate"],
         limit=50,
@@ -95,8 +87,8 @@ def list_items() -> dict:
 @mcp.resource("erpnext://employees")
 def list_employees() -> dict:
     """List all active employees."""
-    from .gateway import gateway
-    return gateway.list_documents(
+    from .erpnext_client import erpnext
+    return erpnext.list_documents(
         "Employee",
         fields=["name", "employee_name", "department", "designation", "status"],
         filters=[["Employee", "status", "=", "Active"]],
@@ -115,7 +107,7 @@ def review_overdue_invoices() -> str:
         "For each invoice, calculate how many days overdue it is. "
         "Group by customer and suggest follow-up actions: "
         "send reminder, escalate, write off, or initiate legal. "
-        "Include the total overdue amount in MYR."
+        "Include the total overdue amount."
     )
 
 
@@ -135,20 +127,15 @@ def monthly_financial_summary() -> str:
 
 @mcp.prompt()
 def prepare_payroll(company: str = "", month: str = "", year: str = "") -> str:
-    """Prepare payroll for approval with statutory breakdown."""
+    """Prepare payroll with statutory breakdown."""
     return (
         f"Prepare payroll for {company or '[company]'} "
         f"for {month or '[month]'} {year or '[year]'}:\n"
         "1. Get all active employees for the company\n"
         "2. Calculate gross salary for each employee\n"
-        "3. Apply Malaysia statutory deductions:\n"
-        "   - EPF: Employee 11%, Employer 13% (for salary > RM5,000)\n"
-        "   - SOCSO: Based on salary tier\n"
-        "   - PCB: Based on tax bracket\n"
-        "   - EIS: 0.2% each (employer + employee)\n"
+        "3. Apply statutory deductions (EPF, SOCSO, PCB, EIS)\n"
         "4. Show per-employee breakdown\n"
-        "5. Show total employer cost\n"
-        "6. Submit for approval"
+        "5. Show total employer cost"
     )
 
 
@@ -160,8 +147,7 @@ def purchase_order_workflow(supplier: str = "") -> str:
         "1. Check current stock levels for items below reorder level\n"
         "2. List recent purchase prices for these items\n"
         "3. Create a Material Request for items needed\n"
-        "4. Convert Material Request to Purchase Order\n"
-        "5. Submit for approval"
+        "4. Convert Material Request to Purchase Order"
     )
 
 

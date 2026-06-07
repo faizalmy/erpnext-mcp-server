@@ -4,7 +4,7 @@ Customer, Sales Order, Quotation, Lead, Opportunity.
 """
 
 from mcp.server.fastmcp import FastMCP
-from ..gateway import gateway
+from ..erpnext_client import erpnext
 
 
 def register(mcp: FastMCP):
@@ -18,7 +18,7 @@ def register(mcp: FastMCP):
             filters: ERPNext filters. Example: [["Customer", "territory", "=", "Malaysia"]]
             limit: Max results (default 20)
         """
-        return gateway.list_documents("Customer", fields=fields, filters=filters, limit=limit)
+        return erpnext.list_documents("Customer", fields=fields, filters=filters, limit=limit)
 
     @mcp.tool()
     def get_customer(name: str) -> dict:
@@ -27,13 +27,13 @@ def register(mcp: FastMCP):
         Args:
             name: Customer name/ID (e.g. 'CUST-00001')
         """
-        return gateway.get_document("Customer", name)
+        return erpnext.get_document("Customer", name)
 
     @mcp.tool()
     def create_customer(customer_name: str, customer_group: str = "All Customer Groups",
                         territory: str = "All Territories", tax_id: str = "",
                         customer_type: str = "Company") -> dict:
-        """Create a new customer (goes through approval).
+        """Create a new customer.
 
         Args:
             customer_name: Company or individual name
@@ -50,7 +50,7 @@ def register(mcp: FastMCP):
         }
         if tax_id:
             data["tax_id"] = tax_id
-        return gateway.create_document("Customer", data)
+        return erpnext.create_document("Customer", data)
 
     @mcp.tool()
     def list_sales_orders(fields: list[str] | None = None, filters: list | None = None,
@@ -62,7 +62,7 @@ def register(mcp: FastMCP):
             filters: ERPNext filters
             limit: Max results
         """
-        return gateway.list_documents("Sales Order", fields=fields, filters=filters, limit=limit)
+        return erpnext.list_documents("Sales Order", fields=fields, filters=filters, limit=limit)
 
     @mcp.tool()
     def get_sales_order(name: str) -> dict:
@@ -71,7 +71,7 @@ def register(mcp: FastMCP):
         Args:
             name: Sales Order name/ID
         """
-        return gateway.get_document("Sales Order", name)
+        return erpnext.get_document("Sales Order", name)
 
     @mcp.tool()
     def list_quotations(fields: list[str] | None = None, filters: list | None = None,
@@ -83,7 +83,7 @@ def register(mcp: FastMCP):
             filters: ERPNext filters
             limit: Max results
         """
-        return gateway.list_documents("Quotation", fields=fields, filters=filters, limit=limit)
+        return erpnext.list_documents("Quotation", fields=fields, filters=filters, limit=limit)
 
     @mcp.tool()
     def get_quotation(name: str) -> dict:
@@ -92,43 +92,43 @@ def register(mcp: FastMCP):
         Args:
             name: Quotation name/ID
         """
-        return gateway.get_document("Quotation", name)
+        return erpnext.get_document("Quotation", name)
 
     @mcp.tool()
     def make_sales_order_from_quotation(quotation: str) -> dict:
-        """Convert a quotation to a sales order (goes through approval).
+        """Convert a quotation to a sales order.
 
         Args:
             quotation: Quotation name/ID to convert
         """
-        return gateway.make_sales_order_from_quotation(quotation)
+        return erpnext.make_sales_order_from_quotation(quotation)
 
     @mcp.tool()
     def make_sales_invoice_from_sales_order(sales_order: str) -> dict:
-        """Create a sales invoice from a sales order (goes through approval).
+        """Create a sales invoice from a sales order.
 
         Args:
             sales_order: Sales Order name/ID
         """
-        return gateway.make_sales_invoice_from_sales_order(sales_order)
+        return erpnext.make_sales_invoice_from_sales_order(sales_order)
 
     @mcp.tool()
     def make_delivery_note_from_sales_order(sales_order: str) -> dict:
-        """Create a delivery note from a sales order (goes through approval).
+        """Create a delivery note from a sales order.
 
         Args:
             sales_order: Sales Order name/ID
         """
-        return gateway.make_delivery_note_from_sales_order(sales_order)
+        return erpnext.make_delivery_note_from_sales_order(sales_order)
 
     @mcp.tool()
     def make_sales_return(sales_invoice: str) -> dict:
-        """Create a sales return (credit note) from an existing invoice (goes through approval).
+        """Create a sales return (credit note) from an existing invoice.
 
         Args:
             sales_invoice: Sales Invoice name/ID to return
         """
-        return gateway.make_sales_return(sales_invoice)
+        return erpnext.make_sales_return(sales_invoice)
 
     # ── CRM ───────────────────────────────────────────────
 
@@ -142,7 +142,7 @@ def register(mcp: FastMCP):
             filters: ERPNext filters
             limit: Max results
         """
-        return gateway.list_documents("Lead", fields=fields, filters=filters, limit=limit)
+        return erpnext.list_documents("Lead", fields=fields, filters=filters, limit=limit)
 
     @mcp.tool()
     def get_lead(name: str) -> dict:
@@ -151,25 +151,25 @@ def register(mcp: FastMCP):
         Args:
             name: Lead name/ID
         """
-        return gateway.get_document("Lead", name)
+        return erpnext.get_document("Lead", name)
 
     @mcp.tool()
     def make_opportunity_from_lead(lead: str) -> dict:
-        """Convert a lead to an opportunity (goes through approval).
+        """Convert a lead to an opportunity.
 
         Args:
             lead: Lead name/ID
         """
-        return gateway.make_opportunity_from_lead(lead)
+        return erpnext.make_opportunity_from_lead(lead)
 
     @mcp.tool()
     def make_customer_from_lead(lead: str) -> dict:
-        """Convert a lead to a customer (goes through approval).
+        """Convert a lead to a customer.
 
         Args:
             lead: Lead name/ID
         """
-        return gateway.make_customer_from_lead(lead)
+        return erpnext.make_customer_from_lead(lead)
 
     @mcp.tool()
     def list_opportunities(fields: list[str] | None = None, filters: list | None = None,
@@ -181,13 +181,13 @@ def register(mcp: FastMCP):
             filters: ERPNext filters
             limit: Max results
         """
-        return gateway.list_documents("Opportunity", fields=fields, filters=filters, limit=limit)
+        return erpnext.list_documents("Opportunity", fields=fields, filters=filters, limit=limit)
 
     @mcp.tool()
     def make_quotation_from_opportunity(opportunity: str) -> dict:
-        """Create a quotation from an opportunity (goes through approval).
+        """Create a quotation from an opportunity.
 
         Args:
             opportunity: Opportunity name/ID
         """
-        return gateway.make_quotation_from_opportunity(opportunity)
+        return erpnext.make_quotation_from_opportunity(opportunity)

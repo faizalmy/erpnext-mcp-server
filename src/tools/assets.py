@@ -4,7 +4,7 @@ Asset, Asset Category, Asset Movement, Asset Maintenance, Asset Repair.
 """
 
 from mcp.server.fastmcp import FastMCP
-from ..gateway import gateway
+from ..erpnext_client import erpnext
 
 
 def register(mcp: FastMCP):
@@ -19,7 +19,7 @@ def register(mcp: FastMCP):
             filters: ERPNext filters
             limit: Max results
         """
-        return gateway.list_documents("Asset", fields=fields, filters=filters, limit=limit)
+        return erpnext.list_documents("Asset", fields=fields, filters=filters, limit=limit)
 
     @mcp.tool()
     def get_asset(name: str) -> dict:
@@ -28,13 +28,13 @@ def register(mcp: FastMCP):
         Args:
             name: Asset name/ID
         """
-        return gateway.get_document("Asset", name)
+        return erpnext.get_document("Asset", name)
 
     @mcp.tool()
     def create_asset(asset_name: str, asset_category: str, item_code: str,
                      company: str = "", gross_purchase_amount: float = 0,
                      purchase_date: str = "") -> dict:
-        """Create a new fixed asset (goes through approval).
+        """Create a new fixed asset.
 
         Args:
             asset_name: Asset display name
@@ -55,43 +55,43 @@ def register(mcp: FastMCP):
             data["gross_purchase_amount"] = gross_purchase_amount
         if purchase_date:
             data["purchase_date"] = purchase_date
-        return gateway.create_document("Asset", data)
+        return erpnext.create_document("Asset", data)
 
     @mcp.tool()
     def make_sales_invoice_from_asset(asset: str) -> dict:
-        """Create a sales invoice for disposing/selling an asset (goes through approval).
+        """Create a sales invoice for disposing/selling an asset.
 
         Args:
             asset: Asset name/ID
         """
-        return gateway.make_asset_sales_invoice(asset)
+        return erpnext.make_asset_sales_invoice(asset)
 
     @mcp.tool()
     def scrap_asset(asset_name: str) -> dict:
-        """Scrap an asset (mark as scrapped, no sale proceeds) (goes through approval).
+        """Scrap an asset (mark as scrapped, no sale proceeds).
 
         Args:
             asset_name: Asset name/ID
         """
-        return gateway.scrap_asset(asset_name)
+        return erpnext.scrap_asset(asset_name)
 
     @mcp.tool()
     def restore_asset(asset_name: str) -> dict:
-        """Restore a scrapped asset back to active (goes through approval).
+        """Restore a scrapped asset back to active.
 
         Args:
             asset_name: Asset name/ID
         """
-        return gateway.restore_asset(asset_name)
+        return erpnext.restore_asset(asset_name)
 
     @mcp.tool()
     def make_asset_movement(asset: str) -> dict:
-        """Create an asset movement/transfer (goes through approval).
+        """Create an asset movement/transfer.
 
         Args:
             asset: Asset name/ID
         """
-        return gateway.make_asset_movement(asset)
+        return erpnext.make_asset_movement(asset)
 
     @mcp.tool()
     def list_asset_categories(fields: list[str] | None = None, limit: int = 50) -> dict:
@@ -101,7 +101,7 @@ def register(mcp: FastMCP):
             fields: Fields to return
             limit: Max results
         """
-        return gateway.list_documents("Asset Category", fields=fields, limit=limit)
+        return erpnext.list_documents("Asset Category", fields=fields, limit=limit)
 
     @mcp.tool()
     def list_asset_maintenance(fields: list[str] | None = None, filters: list | None = None,
@@ -113,7 +113,7 @@ def register(mcp: FastMCP):
             filters: ERPNext filters
             limit: Max results
         """
-        return gateway.list_documents("Asset Maintenance", fields=fields, filters=filters, limit=limit)
+        return erpnext.list_documents("Asset Maintenance", fields=fields, filters=filters, limit=limit)
 
     @mcp.tool()
     def list_asset_repairs(fields: list[str] | None = None, filters: list | None = None,
@@ -125,4 +125,4 @@ def register(mcp: FastMCP):
             filters: ERPNext filters
             limit: Max results
         """
-        return gateway.list_documents("Asset Repair", fields=fields, filters=filters, limit=limit)
+        return erpnext.list_documents("Asset Repair", fields=fields, filters=filters, limit=limit)

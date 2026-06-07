@@ -4,7 +4,7 @@ Item, Stock Entry, Delivery Note, Stock Balance, Batch, Serial No, Warehouse.
 """
 
 from mcp.server.fastmcp import FastMCP
-from ..gateway import gateway
+from ..erpnext_client import erpnext
 
 
 def register(mcp: FastMCP):
@@ -19,7 +19,7 @@ def register(mcp: FastMCP):
             filters: ERPNext filters
             limit: Max results
         """
-        return gateway.list_documents("Item", fields=fields, filters=filters, limit=limit)
+        return erpnext.list_documents("Item", fields=fields, filters=filters, limit=limit)
 
     @mcp.tool()
     def get_item(name: str) -> dict:
@@ -28,13 +28,13 @@ def register(mcp: FastMCP):
         Args:
             name: Item code/name
         """
-        return gateway.get_document("Item", name)
+        return erpnext.get_document("Item", name)
 
     @mcp.tool()
     def create_item(item_code: str, item_name: str, item_group: str = "All Item Groups",
                     stock_uom: str = "Nos", standard_rate: float = 0,
                     is_stock_item: int = 1) -> dict:
-        """Create a new item (goes through approval).
+        """Create a new item.
 
         Args:
             item_code: Unique item code
@@ -52,7 +52,7 @@ def register(mcp: FastMCP):
             "standard_rate": standard_rate,
             "is_stock_item": is_stock_item,
         }
-        return gateway.create_document("Item", data)
+        return erpnext.create_document("Item", data)
 
     @mcp.tool()
     def get_item_details(item_code: str, company: str = "", warehouse: str = "") -> dict:
@@ -63,7 +63,7 @@ def register(mcp: FastMCP):
             company: Company context (optional)
             warehouse: Warehouse context (optional)
         """
-        return gateway.get_item_details(item_code, company=company, warehouse=warehouse)
+        return erpnext.get_item_details(item_code, company=company, warehouse=warehouse)
 
     @mcp.tool()
     def get_stock_balance(item_code: str, warehouse: str = "",
@@ -75,7 +75,7 @@ def register(mcp: FastMCP):
             warehouse: Warehouse (optional, all warehouses if omitted)
             posting_date: Date to check (optional, today if omitted)
         """
-        return gateway.get_stock_balance(item_code, warehouse=warehouse, posting_date=posting_date)
+        return erpnext.get_stock_balance(item_code, warehouse=warehouse, posting_date=posting_date)
 
     @mcp.tool()
     def list_stock_entries(fields: list[str] | None = None, filters: list | None = None,
@@ -87,7 +87,7 @@ def register(mcp: FastMCP):
             filters: ERPNext filters
             limit: Max results
         """
-        return gateway.list_documents("Stock Entry", fields=fields, filters=filters, limit=limit)
+        return erpnext.list_documents("Stock Entry", fields=fields, filters=filters, limit=limit)
 
     @mcp.tool()
     def get_stock_entry(name: str) -> dict:
@@ -96,12 +96,12 @@ def register(mcp: FastMCP):
         Args:
             name: Stock Entry name/ID
         """
-        return gateway.get_document("Stock Entry", name)
+        return erpnext.get_document("Stock Entry", name)
 
     @mcp.tool()
     def make_stock_entry(item_code: str, qty: float, from_warehouse: str = "",
                          to_warehouse: str = "", purpose: str = "Material Transfer") -> dict:
-        """Create a stock entry for material transfer or issue (goes through approval).
+        """Create a stock entry for material transfer or issue.
 
         Args:
             item_code: Item to move
@@ -110,7 +110,7 @@ def register(mcp: FastMCP):
             to_warehouse: Destination warehouse (optional for Material Issue)
             purpose: 'Material Transfer', 'Material Issue', 'Material Receipt', 'Manufacture'
         """
-        return gateway.make_stock_entry(
+        return erpnext.make_stock_entry(
             item_code=item_code, qty=qty,
             from_warehouse=from_warehouse, to_warehouse=to_warehouse,
             purpose=purpose,
@@ -126,7 +126,7 @@ def register(mcp: FastMCP):
             filters: ERPNext filters
             limit: Max results
         """
-        return gateway.list_documents("Delivery Note", fields=fields, filters=filters, limit=limit)
+        return erpnext.list_documents("Delivery Note", fields=fields, filters=filters, limit=limit)
 
     @mcp.tool()
     def get_delivery_note(name: str) -> dict:
@@ -135,25 +135,25 @@ def register(mcp: FastMCP):
         Args:
             name: Delivery Note name/ID
         """
-        return gateway.get_document("Delivery Note", name)
+        return erpnext.get_document("Delivery Note", name)
 
     @mcp.tool()
     def make_sales_invoice_from_dn(delivery_note: str) -> dict:
-        """Create a sales invoice from a delivery note (goes through approval).
+        """Create a sales invoice from a delivery note.
 
         Args:
             delivery_note: Delivery Note name/ID
         """
-        return gateway.make_sales_invoice_from_dn(delivery_note)
+        return erpnext.make_sales_invoice_from_dn(delivery_note)
 
     @mcp.tool()
     def make_sales_return_from_dn(delivery_note: str) -> dict:
-        """Create a sales return from a delivery note (goes through approval).
+        """Create a sales return from a delivery note.
 
         Args:
             delivery_note: Delivery Note name/ID
         """
-        return gateway.make_sales_return_from_dn(delivery_note)
+        return erpnext.make_sales_return_from_dn(delivery_note)
 
     @mcp.tool()
     def list_warehouses(fields: list[str] | None = None, filters: list | None = None,
@@ -165,7 +165,7 @@ def register(mcp: FastMCP):
             filters: ERPNext filters
             limit: Max results
         """
-        return gateway.list_documents("Warehouse", fields=fields, filters=filters, limit=limit)
+        return erpnext.list_documents("Warehouse", fields=fields, filters=filters, limit=limit)
 
     @mcp.tool()
     def get_batch_qty(batch_no: str, warehouse: str = "") -> dict:
@@ -175,7 +175,7 @@ def register(mcp: FastMCP):
             batch_no: Batch number
             warehouse: Filter by warehouse (optional)
         """
-        return gateway.get_batch_qty(batch_no, warehouse=warehouse)
+        return erpnext.get_batch_qty(batch_no, warehouse=warehouse)
 
     @mcp.tool()
     def list_batches(fields: list[str] | None = None, filters: list | None = None,
@@ -187,7 +187,7 @@ def register(mcp: FastMCP):
             filters: ERPNext filters
             limit: Max results
         """
-        return gateway.list_documents("Batch", fields=fields, filters=filters, limit=limit)
+        return erpnext.list_documents("Batch", fields=fields, filters=filters, limit=limit)
 
     @mcp.tool()
     def list_serial_nos(fields: list[str] | None = None, filters: list | None = None,
@@ -199,7 +199,7 @@ def register(mcp: FastMCP):
             filters: ERPNext filters
             limit: Max results
         """
-        return gateway.list_documents("Serial No", fields=fields, filters=filters, limit=limit)
+        return erpnext.list_documents("Serial No", fields=fields, filters=filters, limit=limit)
 
     @mcp.tool()
     def get_stock_ledger_entries(item_code: str, warehouse: str = "",
@@ -213,7 +213,7 @@ def register(mcp: FastMCP):
             posting_date_from: Start date (YYYY-MM-DD, optional)
             posting_date_to: End date (YYYY-MM-DD, optional)
         """
-        return gateway.get_stock_ledger_entries(
+        return erpnext.get_stock_ledger_entries(
             item_code, warehouse=warehouse,
             posting_date_from=posting_date_from, posting_date_to=posting_date_to,
         )

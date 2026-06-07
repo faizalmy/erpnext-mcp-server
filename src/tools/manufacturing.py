@@ -4,7 +4,7 @@ Work Order, BOM (Bill of Materials), Production Plan, Job Card.
 """
 
 from mcp.server.fastmcp import FastMCP
-from ..gateway import gateway
+from ..erpnext_client import erpnext
 
 
 def register(mcp: FastMCP):
@@ -19,7 +19,7 @@ def register(mcp: FastMCP):
             filters: ERPNext filters
             limit: Max results
         """
-        return gateway.list_documents("Work Order", fields=fields, filters=filters, limit=limit)
+        return erpnext.list_documents("Work Order", fields=fields, filters=filters, limit=limit)
 
     @mcp.tool()
     def get_work_order(name: str) -> dict:
@@ -28,13 +28,13 @@ def register(mcp: FastMCP):
         Args:
             name: Work Order name/ID
         """
-        return gateway.get_document("Work Order", name)
+        return erpnext.get_document("Work Order", name)
 
     @mcp.tool()
     def create_work_order(production_item: str, qty: float, bom_no: str,
                           company: str = "", fg_warehouse: str = "",
                           wip_warehouse: str = "") -> dict:
-        """Create a work order for manufacturing (goes through approval).
+        """Create a work order for manufacturing.
 
         Args:
             production_item: Item to manufacture
@@ -55,16 +55,16 @@ def register(mcp: FastMCP):
             data["fg_warehouse"] = fg_warehouse
         if wip_warehouse:
             data["wip_warehouse"] = wip_warehouse
-        return gateway.create_document("Work Order", data)
+        return erpnext.create_document("Work Order", data)
 
     @mcp.tool()
     def make_stock_entry_from_work_order(work_order: str) -> dict:
-        """Create a stock entry (material transfer/manufacture) from a work order (goes through approval).
+        """Create a stock entry (material transfer/manufacture) from a work order.
 
         Args:
             work_order: Work Order name/ID
         """
-        return gateway.make_stock_entry_from_wo(work_order)
+        return erpnext.make_stock_entry_from_wo(work_order)
 
     @mcp.tool()
     def list_boms(fields: list[str] | None = None, filters: list | None = None,
@@ -76,7 +76,7 @@ def register(mcp: FastMCP):
             filters: ERPNext filters
             limit: Max results
         """
-        return gateway.list_documents("BOM", fields=fields, filters=filters, limit=limit)
+        return erpnext.list_documents("BOM", fields=fields, filters=filters, limit=limit)
 
     @mcp.tool()
     def get_bom(name: str) -> dict:
@@ -85,7 +85,7 @@ def register(mcp: FastMCP):
         Args:
             name: BOM name/ID
         """
-        return gateway.get_document("BOM", name)
+        return erpnext.get_document("BOM", name)
 
     @mcp.tool()
     def get_bom_items(bom: str, company: str = "", qty: float = 0) -> dict:
@@ -96,7 +96,7 @@ def register(mcp: FastMCP):
             company: Company context (optional)
             qty: Override quantity (optional, uses BOM qty if omitted)
         """
-        return gateway.get_bom_items(bom, company=company, qty=qty)
+        return erpnext.get_bom_items(bom, company=company, qty=qty)
 
     @mcp.tool()
     def get_exploded_items(bom: str, qty: float = 0) -> dict:
@@ -106,7 +106,7 @@ def register(mcp: FastMCP):
             bom: BOM name/ID
             qty: Override quantity (optional)
         """
-        return gateway.get_exploded_items(bom, qty=qty)
+        return erpnext.get_exploded_items(bom, qty=qty)
 
     @mcp.tool()
     def list_production_plans(fields: list[str] | None = None, filters: list | None = None,
@@ -118,7 +118,7 @@ def register(mcp: FastMCP):
             filters: ERPNext filters
             limit: Max results
         """
-        return gateway.list_documents("Production Plan", fields=fields, filters=filters, limit=limit)
+        return erpnext.list_documents("Production Plan", fields=fields, filters=filters, limit=limit)
 
     @mcp.tool()
     def get_production_plan(name: str) -> dict:
@@ -127,25 +127,25 @@ def register(mcp: FastMCP):
         Args:
             name: Production Plan name/ID
         """
-        return gateway.get_document("Production Plan", name)
+        return erpnext.get_document("Production Plan", name)
 
     @mcp.tool()
     def make_material_request_from_pp(production_plan: str) -> dict:
-        """Generate material requests from a production plan (goes through approval).
+        """Generate material requests from a production plan.
 
         Args:
             production_plan: Production Plan name/ID
         """
-        return gateway.make_material_request_from_pp(production_plan)
+        return erpnext.make_material_request_from_pp(production_plan)
 
     @mcp.tool()
     def make_work_order_from_pp(production_plan: str) -> dict:
-        """Generate work orders from a production plan (goes through approval).
+        """Generate work orders from a production plan.
 
         Args:
             production_plan: Production Plan name/ID
         """
-        return gateway.make_work_order_from_pp(production_plan)
+        return erpnext.make_work_order_from_pp(production_plan)
 
     @mcp.tool()
     def list_job_cards(fields: list[str] | None = None, filters: list | None = None,
@@ -157,4 +157,4 @@ def register(mcp: FastMCP):
             filters: ERPNext filters
             limit: Max results
         """
-        return gateway.list_documents("Job Card", fields=fields, filters=filters, limit=limit)
+        return erpnext.list_documents("Job Card", fields=fields, filters=filters, limit=limit)

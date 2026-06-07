@@ -6,7 +6,7 @@ For domain-specific operations (invoices, payroll), see accounting.py and hr.py.
 
 from mcp.server.fastmcp import FastMCP
 
-from ..gateway import gateway
+from ..erpnext_client import erpnext
 
 
 def register(mcp: FastMCP):
@@ -33,7 +33,7 @@ def register(mcp: FastMCP):
         Returns:
             List of documents with ai_context.
         """
-        return gateway.list_documents(
+        return erpnext.list_documents(
             doctype=doctype,
             fields=fields,
             filters=filters,
@@ -51,11 +51,11 @@ def register(mcp: FastMCP):
         Returns:
             Full document with ai_context.
         """
-        return gateway.get_document(doctype=doctype, name=name)
+        return erpnext.get_document(doctype=doctype, name=name)
 
     @mcp.tool()
     def create_document(doctype: str, data: dict) -> dict:
-        """Create a new ERPNext document (goes through approval).
+        """Create a new ERPNext document.
 
         Use this for generic DocType creation. For invoices and payroll,
         prefer the specialized tools (create_invoice, run_payroll) which
@@ -66,13 +66,13 @@ def register(mcp: FastMCP):
             data: Document fields. Example: {"customer_name": "Acme Sdn Bhd", "customer_group": "All Customer Groups", "territory": "Malaysia"}
 
         Returns:
-            Intent ID and preview for approval.
+            Gateway response.
         """
-        return gateway.create_document(doctype=doctype, data=data)
+        return erpnext.create_document(doctype=doctype, data=data)
 
     @mcp.tool()
     def update_document(doctype: str, name: str, data: dict) -> dict:
-        """Update an existing ERPNext document (goes through approval).
+        """Update an existing ERPNext document.
 
         Args:
             doctype: DocType name
@@ -80,13 +80,13 @@ def register(mcp: FastMCP):
             data: Fields to update. Example: {"customer_name": "Acme Corp Sdn Bhd"}
 
         Returns:
-            Intent ID and preview for approval.
+            Gateway response.
         """
-        return gateway.update_document(doctype=doctype, name=name, data=data)
+        return erpnext.update_document(doctype=doctype, name=name, data=data)
 
     @mcp.tool()
     def submit_document(doctype: str, name: str) -> dict:
-        """Submit a draft document (goes through approval).
+        """Submit a draft document (finalize it).
 
         Submitting makes a document 'final' — it can no longer be edited,
         only amended. This is how invoices, payments, and stock entries
@@ -97,6 +97,6 @@ def register(mcp: FastMCP):
             name: Document name/ID
 
         Returns:
-            Intent ID and preview for approval.
+            Gateway response.
         """
-        return gateway.submit_document(doctype=doctype, name=name)
+        return erpnext.submit_document(doctype=doctype, name=name)

@@ -5,7 +5,7 @@ Includes Malaysia statutory validation (EPF/SOCSO/PCB).
 """
 
 from mcp.server.fastmcp import FastMCP
-from ..gateway import gateway
+from ..erpnext_client import erpnext
 
 
 def register(mcp: FastMCP):
@@ -22,7 +22,7 @@ def register(mcp: FastMCP):
             filters: ERPNext filters. Example: [["Employee", "status", "=", "Active"]]
             limit: Max results
         """
-        return gateway.list_documents("Employee", fields=fields, filters=filters, limit=limit)
+        return erpnext.list_documents("Employee", fields=fields, filters=filters, limit=limit)
 
     @mcp.tool()
     def get_employee(name: str) -> dict:
@@ -31,7 +31,7 @@ def register(mcp: FastMCP):
         Args:
             name: Employee name/ID
         """
-        return gateway.get_document("Employee", name)
+        return erpnext.get_document("Employee", name)
 
     @mcp.tool()
     def create_employee(employee_name: str, company: str, date_of_joining: str,
@@ -39,7 +39,7 @@ def register(mcp: FastMCP):
                         date_of_birth: str = "", gender: str = "",
                         cell_number: str = "", personal_email: str = "",
                         employment_type: str = "") -> dict:
-        """Create a new employee record (goes through approval).
+        """Create a new employee record.
 
         Args:
             employee_name: Full name
@@ -66,7 +66,7 @@ def register(mcp: FastMCP):
         }.items():
             if v:
                 data[k] = v
-        return gateway.create_employee(data)
+        return erpnext.create_employee(data)
 
     # ── Leave ─────────────────────────────────────────────
 
@@ -80,7 +80,7 @@ def register(mcp: FastMCP):
             filters: ERPNext filters
             limit: Max results
         """
-        return gateway.list_documents("Leave Application", fields=fields, filters=filters, limit=limit)
+        return erpnext.list_documents("Leave Application", fields=fields, filters=filters, limit=limit)
 
     @mcp.tool()
     def get_leave_application(name: str) -> dict:
@@ -89,7 +89,7 @@ def register(mcp: FastMCP):
         Args:
             name: Leave Application name/ID
         """
-        return gateway.get_document("Leave Application", name)
+        return erpnext.get_document("Leave Application", name)
 
     @mcp.tool()
     def get_leave_balance(employee: str) -> dict:
@@ -98,7 +98,7 @@ def register(mcp: FastMCP):
         Args:
             employee: Employee name/ID
         """
-        return gateway.get_leave_balance(employee)
+        return erpnext.get_leave_balance(employee)
 
     @mcp.tool()
     def get_leave_balance_on(employee: str, leave_type: str, date: str = "") -> dict:
@@ -109,7 +109,7 @@ def register(mcp: FastMCP):
             leave_type: Leave type (e.g. 'Annual Leave', 'Sick Leave')
             date: Date to check YYYY-MM-DD (optional, defaults to today)
         """
-        return gateway.get_leave_balance_on(employee, leave_type, date=date)
+        return erpnext.get_leave_balance_on(employee, leave_type, date=date)
 
     @mcp.tool()
     def get_leave_days(employee: str, leave_type: str, from_date: str,
@@ -122,7 +122,7 @@ def register(mcp: FastMCP):
             from_date: Start date YYYY-MM-DD
             to_date: End date YYYY-MM-DD
         """
-        return gateway.get_leave_days(employee, leave_type, from_date, to_date)
+        return erpnext.get_leave_days(employee, leave_type, from_date, to_date)
 
     @mcp.tool()
     def list_leave_types(fields: list[str] | None = None, limit: int = 50) -> dict:
@@ -132,7 +132,7 @@ def register(mcp: FastMCP):
             fields: Fields to return
             limit: Max results
         """
-        return gateway.list_documents("Leave Type", fields=fields, limit=limit)
+        return erpnext.list_documents("Leave Type", fields=fields, limit=limit)
 
     # ── Attendance ────────────────────────────────────────
 
@@ -146,7 +146,7 @@ def register(mcp: FastMCP):
             filters: ERPNext filters
             limit: Max results
         """
-        return gateway.list_documents("Attendance", fields=fields, filters=filters, limit=limit)
+        return erpnext.list_documents("Attendance", fields=fields, filters=filters, limit=limit)
 
     @mcp.tool()
     def list_attendance_requests(fields: list[str] | None = None, filters: list | None = None,
@@ -158,7 +158,7 @@ def register(mcp: FastMCP):
             filters: ERPNext filters
             limit: Max results
         """
-        return gateway.list_documents("Attendance Request", fields=fields, filters=filters, limit=limit)
+        return erpnext.list_documents("Attendance Request", fields=fields, filters=filters, limit=limit)
 
     # ── Expense ───────────────────────────────────────────
 
@@ -172,7 +172,7 @@ def register(mcp: FastMCP):
             filters: ERPNext filters
             limit: Max results
         """
-        return gateway.list_documents("Expense Claim", fields=fields, filters=filters, limit=limit)
+        return erpnext.list_documents("Expense Claim", fields=fields, filters=filters, limit=limit)
 
     @mcp.tool()
     def get_expense_claim(name: str) -> dict:
@@ -181,11 +181,11 @@ def register(mcp: FastMCP):
         Args:
             name: Expense Claim name/ID
         """
-        return gateway.get_document("Expense Claim", name)
+        return erpnext.get_document("Expense Claim", name)
 
     @mcp.tool()
     def submit_expense(employee: str, expenses: list[dict]) -> dict:
-        """Submit an expense claim (goes through approval).
+        """Submit an expense claim.
 
         Args:
             employee: Employee name/ID
@@ -195,16 +195,16 @@ def register(mcp: FastMCP):
                 - description (str): What the expense was for
                 - date (str): Expense date YYYY-MM-DD
         """
-        return gateway.submit_expense(employee, expenses)
+        return erpnext.submit_expense(employee, expenses)
 
     @mcp.tool()
     def make_expense_bank_entry(expense_claim: str) -> dict:
-        """Create a bank entry (payment) for an approved expense claim (goes through approval).
+        """Create a bank entry (payment) for an expense claim.
 
         Args:
             expense_claim: Expense Claim name/ID
         """
-        return gateway.make_expense_bank_entry(expense_claim)
+        return erpnext.make_expense_bank_entry(expense_claim)
 
     # ── Payroll ───────────────────────────────────────────
 
@@ -218,7 +218,7 @@ def register(mcp: FastMCP):
             filters: ERPNext filters
             limit: Max results
         """
-        return gateway.list_documents("Payroll Entry", fields=fields, filters=filters, limit=limit)
+        return erpnext.list_documents("Payroll Entry", fields=fields, filters=filters, limit=limit)
 
     @mcp.tool()
     def get_payroll_entry(name: str) -> dict:
@@ -227,21 +227,20 @@ def register(mcp: FastMCP):
         Args:
             name: Payroll Entry name/ID
         """
-        return gateway.get_document("Payroll Entry", name)
+        return erpnext.get_document("Payroll Entry", name)
 
     @mcp.tool()
     def run_payroll(company: str, month: str, year: int) -> dict:
-        """Run payroll for a month (goes through approval).
+        """Run payroll for a month.
 
-        Validates Malaysia statutory rates (EPF, SOCSO, PCB, EIS).
-        Preview shows per-employee breakdown.
+        Calculates EPF, SOCSO, PCB, EIS deductions per employee.
 
         Args:
             company: Company name
             month: Month name (e.g. 'January', 'June')
             year: Year (e.g. 2026)
         """
-        return gateway.run_payroll(company, month, year)
+        return erpnext.run_payroll(company, month, year)
 
     @mcp.tool()
     def list_salary_slips(fields: list[str] | None = None, filters: list | None = None,
@@ -253,7 +252,7 @@ def register(mcp: FastMCP):
             filters: ERPNext filters
             limit: Max results
         """
-        return gateway.list_documents("Salary Slip", fields=fields, filters=filters, limit=limit)
+        return erpnext.list_documents("Salary Slip", fields=fields, filters=filters, limit=limit)
 
     @mcp.tool()
     def get_salary_slip(name: str) -> dict:
@@ -262,7 +261,7 @@ def register(mcp: FastMCP):
         Args:
             name: Salary Slip name/ID
         """
-        return gateway.get_document("Salary Slip", name)
+        return erpnext.get_document("Salary Slip", name)
 
     @mcp.tool()
     def list_salary_structures(fields: list[str] | None = None, limit: int = 20) -> dict:
@@ -272,7 +271,7 @@ def register(mcp: FastMCP):
             fields: Fields to return
             limit: Max results
         """
-        return gateway.list_documents("Salary Structure", fields=fields, limit=limit)
+        return erpnext.list_documents("Salary Structure", fields=fields, limit=limit)
 
     # ── Loan ──────────────────────────────────────────────
 
@@ -286,7 +285,7 @@ def register(mcp: FastMCP):
             filters: ERPNext filters
             limit: Max results
         """
-        return gateway.list_documents("Loan", fields=fields, filters=filters, limit=limit)
+        return erpnext.list_documents("Loan", fields=fields, filters=filters, limit=limit)
 
     @mcp.tool()
     def get_loan(name: str) -> dict:
@@ -295,7 +294,7 @@ def register(mcp: FastMCP):
         Args:
             name: Loan name/ID
         """
-        return gateway.get_document("Loan", name)
+        return erpnext.get_document("Loan", name)
 
     # ── Departments & Designations ────────────────────────
 
@@ -307,7 +306,7 @@ def register(mcp: FastMCP):
             fields: Fields to return
             limit: Max results
         """
-        return gateway.list_documents("Department", fields=fields, limit=limit)
+        return erpnext.list_documents("Department", fields=fields, limit=limit)
 
     @mcp.tool()
     def list_designations(fields: list[str] | None = None, limit: int = 50) -> dict:
@@ -317,4 +316,4 @@ def register(mcp: FastMCP):
             fields: Fields to return
             limit: Max results
         """
-        return gateway.list_documents("Designation", fields=fields, limit=limit)
+        return erpnext.list_documents("Designation", fields=fields, limit=limit)
