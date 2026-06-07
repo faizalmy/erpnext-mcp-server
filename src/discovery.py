@@ -203,6 +203,7 @@ class DiscoveryEngine:
             return None
 
     def _make_list_fn(self, doctype: str, schema_props: list[str]) -> tuple[Callable, dict]:
+        safe = doctype.replace(" ", "_")
         def fn(limit: int = 20, filters: list | None = None,
                fields: list[str] | None = None) -> dict:
             return erpnext.list_documents(
@@ -211,7 +212,7 @@ class DiscoveryEngine:
                 filters=filters, limit=limit,
             )
         config = {
-            "name": f"list_{doctype}",
+            "name": f"list_{safe}",
             "description": (f"List {doctype} records. "
                             f"Available fields: {', '.join(schema_props[:15])}"),
             "parameters": {
@@ -229,10 +230,11 @@ class DiscoveryEngine:
         return fn, config
 
     def _make_get_fn(self, doctype: str) -> tuple[Callable, dict]:
+        safe = doctype.replace(" ", "_")
         def fn(name: str) -> dict:
             return erpnext.get_document(doctype, name)
         config = {
-            "name": f"get_{doctype}",
+            "name": f"get_{safe}",
             "description": f"Get a single {doctype} by name/ID.",
             "parameters": {
                 "type": "object",
@@ -247,6 +249,7 @@ class DiscoveryEngine:
 
     def _make_create_fn(self, doctype: str, schema: dict,
                         required: list[str]) -> tuple[Callable, dict]:
+        safe = doctype.replace(" ", "_")
         def fn(data: dict) -> dict:
             return erpnext.create_document(doctype, data)
         desc = f"Create a new {doctype}."
@@ -254,7 +257,7 @@ class DiscoveryEngine:
             desc += f" Required: {', '.join(required)}."
         desc += f" Fields: {', '.join(list(schema.keys())[:20])}"
         config = {
-            "name": f"create_{doctype}",
+            "name": f"create_{safe}",
             "description": desc,
             "parameters": {
                 "type": "object",
@@ -269,10 +272,11 @@ class DiscoveryEngine:
         return fn, config
 
     def _make_update_fn(self, doctype: str, schema: dict) -> tuple[Callable, dict]:
+        safe = doctype.replace(" ", "_")
         def fn(name: str, data: dict) -> dict:
             return erpnext.update_document(doctype, name, data)
         config = {
-            "name": f"update_{doctype}",
+            "name": f"update_{safe}",
             "description": f"Update an existing {doctype} (partial update).",
             "parameters": {
                 "type": "object",
@@ -289,10 +293,11 @@ class DiscoveryEngine:
         return fn, config
 
     def _make_delete_fn(self, doctype: str) -> tuple[Callable, dict]:
+        safe = doctype.replace(" ", "_")
         def fn(name: str) -> dict:
             return erpnext.delete_document(doctype, name)
         config = {
-            "name": f"delete_{doctype}",
+            "name": f"delete_{safe}",
             "description": f"Delete a {doctype} permanently.",
             "parameters": {
                 "type": "object",
