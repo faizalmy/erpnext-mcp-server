@@ -20,6 +20,11 @@ def mock_erpnext():
     with respx.mock(assert_all_called=False) as respx_mock:
         base = settings.erpnext_url
 
+        # Mock login (for password auth auto-login)
+        respx_mock.post(f"{base}/api/method/login").mock(
+            return_value=Response(200, json={"message": "Logged In"})
+        )
+
         # Documents
         respx_mock.get(f"{base}/api/resource/Customer").mock(
             return_value=Response(200, json={

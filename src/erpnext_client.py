@@ -33,6 +33,9 @@ class ERPNextClient:
             follow_redirects=True,
         )
         self._logged_in = False
+        # Auto-login when using password auth (no API key)
+        if not settings.erpnext_api_key:
+            self._login()
 
     def close(self):
         self._client.close()
