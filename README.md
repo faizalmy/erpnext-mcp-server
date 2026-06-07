@@ -10,7 +10,7 @@ AI Agent (Claude, ChatGPT, Hermes, Cursor, etc.)
     ▼ MCP protocol (stdio)
 ┌──────────────────────────┐
 │  erpnext-mcp-server       │  ← tool definitions + direct ERPNext API calls
-│  ~115 tools, zero logic   │     no auth layer, no approval engine
+│  ~120 tools, zero logic   │     no auth layer, no approval engine
 └──────────┬───────────────┘
            │ REST API
 ┌──────────▼───────────────┐
@@ -49,16 +49,16 @@ pytest tests/ -v
 - **Token auth** (production): Set `ERPNEXT_API_KEY` and `ERPNEXT_API_SECRET`. Generate in ERPNext: User > API Access > Generate Keys.
 - **Password auth** (development): Leave API key/secret empty. Uses session cookies.
 
-## Tools (118 total)
+## Tools (121 total)
 
 | Module | Tools | Covers |
 |---|---|---|
 | Documents | 5 | Generic CRUD on ANY DocType |
-| Accounting | 5 | Invoices, payments, P&L, trial balance, balance sheet |
-| Selling | 17 | Customer, Sales Order, Quotation, Lead, Opportunity, CRM |
-| Buying | 13 | Supplier, PO, Purchase Receipt, Material Request, returns |
-| Stock | 17 | Item, Stock Entry, Delivery Note, Stock Balance, Batch, Serial No |
-| HR | 25 | Employee, Leave, Attendance, Expense, Payroll, Salary, Loan |
+| Accounting | 12 | Sales/Purchase Invoice, Payment, Journal Entry, P&L, Balance Sheet, Trial Balance, Exchange Rate |
+| Selling | 17 | Customer, Sales Order, Quotation, Lead, Opportunity, CRM pipeline |
+| Buying | 13 | Supplier, Purchase Order, Purchase Receipt, Material Request, returns |
+| Stock | 17 | Item, Stock Entry, Delivery Note, Stock Balance, Batch, Serial No, Warehouse |
+| HR | 25 | Employee, Leave, Attendance, Expense, Payroll, Salary, Loan, Department |
 | Manufacturing | 13 | Work Order, BOM, Production Plan, Job Card |
 | Projects | 9 | Project, Task, Timesheet |
 | Assets | 10 | Asset, Category, Maintenance, Repair, Scrap, Restore |
