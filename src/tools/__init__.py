@@ -1,11 +1,6 @@
-"""MCP tool modules for erpnext-mcp-server."""
+"""Tool modules for erpnext-mcp-server.
 
-from . import (
-    documents, accounting, selling, buying, stock,
-    hr, manufacturing, projects, assets,
-)
-
-__all__ = [
-    "documents", "accounting", "selling", "buying", "stock",
-    "hr", "manufacturing", "projects", "assets",
-]
+Tools come from two sources:
+1. Auto-discovery (discovery.py) — CRUD tools generated from DocType metadata
+2. Curated (curated.py) — high-level operations, conversions, reports
+"""

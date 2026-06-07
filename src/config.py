@@ -19,10 +19,26 @@ class Settings(BaseSettings):
     erpnext_usr: str = "Administrator"
     erpnext_pwd: str = "admin"
 
+    # Discovery filter (comma-separated DocType names)
+    discovery_include: str = ""   # Only these DocTypes (empty = all)
+    discovery_exclude: str = ""   # Skip these DocTypes (empty = none)
+
     # Timeouts (seconds)
     timeout: float = 30.0
 
     model_config = {"env_file": ".env", "env_prefix": "ERPNEXT_"}
+
+    @property
+    def discovery_include_list(self) -> list[str] | None:
+        if not self.discovery_include:
+            return None
+        return [s.strip() for s in self.discovery_include.split(",") if s.strip()]
+
+    @property
+    def discovery_exclude_list(self) -> list[str] | None:
+        if not self.discovery_exclude:
+            return None
+        return [s.strip() for s in self.discovery_exclude.split(",") if s.strip()]
 
     @property
     def api_base(self) -> str:

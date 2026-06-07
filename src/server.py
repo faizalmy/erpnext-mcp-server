@@ -3,19 +3,26 @@
 Standalone MCP server that connects directly to any ERPNext instance.
 No gateway, no business logic — just tool definitions and ERPNext API calls.
 
+Tools come from two sources:
+1. Auto-discovery: CRUD tools generated from DocType metadata at startup
+2. Curated: High-level operations (conversions, reports, workflows)
+
 Usage:
     python -m src.server          # stdio transport (default)
     python -m src.server --sse    # SSE transport (for remote agents)
 """
 
+import logging
 import sys
 
 from mcp.server.fastmcp import FastMCP
 
-from .tools import (
-    documents, accounting, selling, buying, stock,
-    hr, manufacturing, projects, assets,
-)
+from .config import settings
+from .discovery import discovery
+from .tools import curated
+
+logging.basicConfig(level=logging.INFO)
+log = logging.getLogger(__name__)
 
 # ── MCP Server ────────────────────────────────────────────────
 
@@ -23,23 +30,29 @@ mcp = FastMCP(
     "erpnext",
     instructions=(
         "ERPNext MCP Server: AI-native interface to ERPNext. "
-        "All monetary values are in the company's default currency. "
-        "Use list_documents for generic DocType queries. "
-        "Use specialized tools (create_sales_invoice, etc.) for domain operations."
+        "Tools are auto-generated from your ERPNext DocTypes at startup. "
+        "Use list_* tools to browse data, get_* to read, "
+        "create_*/update_*/delete_* for mutations. "
+        "Curated tools handle complex workflows (conversions, reports). "
+        "All monetary values are in the company's default currency."
     ),
 )
 
-# ── Register tool groups ──────────────────────────────────────
+# ── Register tools ────────────────────────────────────────────
 
-documents.register(mcp)
-accounting.register(mcp)
-selling.register(mcp)
-buying.register(mcp)
-stock.register(mcp)
-hr.register(mcp)
-manufacturing.register(mcp)
-projects.register(mcp)
-assets.register(mcp)
+# 1. Auto-discovered CRUD tools from DocType metadata
+log.info("Discovering DocTypes from ERPNext...")
+crud_count = discovery.register_tools(
+    mcp,
+    include=settings.discovery_include_list,
+    exclude=settings.discovery_exclude_list,
+)
+log.info("Auto-discovered %d CRUD tools", crud_count)
+
+# 2. Curated tools (conversions, reports, workflows)
+curated.register(mcp)
+log.info("Registered curated tools")
+
 
 # ── MCP Resources (read-only structured data) ─────────────────
 
