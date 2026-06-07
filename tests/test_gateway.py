@@ -130,7 +130,7 @@ class TestGatewayClient:
 
     def test_create_invoice(self, mock_gateway):
         from src.gateway import gateway
-        result = gateway.create_invoice(
+        result = gateway.create_sales_invoice(
             customer="Acme Sdn Bhd",
             items=[{"item_code": "CONSULTING", "qty": 1, "rate": 10000}],
         )

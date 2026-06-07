@@ -17,7 +17,10 @@ import sys
 
 from mcp.server.fastmcp import FastMCP
 
-from .tools import documents, accounting, hr, approvals
+from .tools import (
+    documents, accounting, selling, buying, stock,
+    hr, manufacturing, projects, assets, approvals,
+)
 
 # ── MCP Server ────────────────────────────────────────────────
 
@@ -37,7 +40,13 @@ mcp = FastMCP(
 
 documents.register(mcp)
 accounting.register(mcp)
+selling.register(mcp)
+buying.register(mcp)
+stock.register(mcp)
 hr.register(mcp)
+manufacturing.register(mcp)
+projects.register(mcp)
+assets.register(mcp)
 approvals.register(mcp)
 
 # ── MCP Resources (read-only structured data) ─────────────────
@@ -79,6 +88,18 @@ def list_items() -> dict:
     return gateway.list_documents(
         "Item",
         fields=["name", "item_name", "item_group", "standard_rate"],
+        limit=50,
+    )
+
+
+@mcp.resource("erpnext://employees")
+def list_employees() -> dict:
+    """List all active employees."""
+    from .gateway import gateway
+    return gateway.list_documents(
+        "Employee",
+        fields=["name", "employee_name", "department", "designation", "status"],
+        filters=[["Employee", "status", "=", "Active"]],
         limit=50,
     )
 
@@ -128,6 +149,32 @@ def prepare_payroll(company: str = "", month: str = "", year: str = "") -> str:
         "4. Show per-employee breakdown\n"
         "5. Show total employer cost\n"
         "6. Submit for approval"
+    )
+
+
+@mcp.prompt()
+def purchase_order_workflow(supplier: str = "") -> str:
+    """End-to-end purchase order workflow."""
+    return (
+        f"Create a purchase order for {supplier or '[supplier]'}:\n"
+        "1. Check current stock levels for items below reorder level\n"
+        "2. List recent purchase prices for these items\n"
+        "3. Create a Material Request for items needed\n"
+        "4. Convert Material Request to Purchase Order\n"
+        "5. Submit for approval"
+    )
+
+
+@mcp.prompt()
+def manufacturing_report() -> str:
+    """Manufacturing status report."""
+    return (
+        "Generate a manufacturing status report:\n"
+        "1. List all open Work Orders\n"
+        "2. For each: show progress, raw material availability, and status\n"
+        "3. List overdue Work Orders (past planned start date)\n"
+        "4. Show raw material stock levels vs BOM requirements\n"
+        "5. Suggest prioritization and any material requests needed"
     )
 
 

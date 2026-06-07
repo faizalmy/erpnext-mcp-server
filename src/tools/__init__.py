@@ -1,5 +1,11 @@
 """MCP tool modules for AI-ERP."""
 
-from . import documents, accounting, hr, approvals
+from . import (
+    documents, accounting, selling, buying, stock,
+    hr, manufacturing, projects, assets, approvals,
+)
 
-__all__ = ["documents", "accounting", "hr", "approvals"]
+__all__ = [
+    "documents", "accounting", "selling", "buying", "stock",
+    "hr", "manufacturing", "projects", "assets", "approvals",
+]
