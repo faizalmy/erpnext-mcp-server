@@ -2,136 +2,129 @@
 
 **Standalone MCP server for ERPNext.** Connects directly to any ERPNext instance — no gateway, no middleware, no business logic.
 
-Open source. Any developer can point it at their ERPNext and get AI agent access instantly.
-
 ```
 AI Agent (Claude, ChatGPT, Hermes, Cursor, etc.)
     │
     ▼ MCP protocol (stdio)
 ┌──────────────────────────┐
-│  erpnext-mcp-server       │  ← tool definitions + direct ERPNext API calls
-│  ~120 tools, zero logic   │     no auth layer, no approval engine
+│  erpnext-mcp-server       │  ← 121 tools, zero logic
 └──────────┬───────────────┘
            │ REST API
 ┌──────────▼───────────────┐
-│  ERPNext instance         │  ← the actual ERP
+│  ERPNext instance         │
 └──────────────────────────┘
 ```
 
-## Quick Start
+## Setup
 
 ```bash
-# 1. Install
-pip install -e ".[dev]"
-
-# 2. Configure (point at your ERPNext)
+git clone https://github.com/your-org/erpnext-mcp-server.git
+cd erpnext-mcp-server
 cp .env.example .env
-# Edit .env — set ERPNEXT_URL and auth credentials
+# Edit .env — point at your ERPNext
+uv venv && uv pip install -e ".[dev]"
+```
 
-# 3. Run (stdio transport, for MCP clients)
+## Run
+
+```bash
+# MCP server (stdio transport)
 python -m src.server
 
-# 4. Run tests
+# Tests
 pytest tests/ -v
 ```
 
 ## Configuration
 
-| Env Variable | Default | Description |
+`.env` file:
+
+| Variable | Default | Description |
 |---|---|---|
-| `ERPNEXT_URL` | `http://localhost:8080` | ERPNext instance URL |
-| `ERPNEXT_API_KEY` | (empty) | API key (token auth) |
-| `ERPNEXT_API_SECRET` | (empty) | API secret (token auth) |
-| `ERPNEXT_USR` | `Administrator` | Username (password auth, dev only) |
-| `ERPNEXT_PWD` | `admin` | Password (password auth, dev only) |
+| `ERPNEXT_URL` | `http://localhost:8080` | Your ERPNext instance |
+| `ERPNEXT_API_KEY` | | Token auth — generate in User > API Access |
+| `ERPNEXT_API_SECRET` | | Token auth — paired with API key |
+| `ERPNEXT_USR` | `Administrator` | Password auth (dev only) |
+| `ERPNEXT_PWD` | `admin` | Password auth (dev only) |
 
-**Auth modes:**
-- **Token auth** (production): Set `ERPNEXT_API_KEY` and `ERPNEXT_API_SECRET`. Generate in ERPNext: User > API Access > Generate Keys.
-- **Password auth** (development): Leave API key/secret empty. Uses session cookies.
+**Token auth** (production): set `ERPNEXT_API_KEY` + `ERPNEXT_API_SECRET`.
 
-## Tools (121 total)
+**Password auth** (dev): leave API key/secret empty. Client auto-logins via session cookie.
 
-| Module | Tools | Covers |
+## MCP Client Config
+
+```json
+{
+  "mcpServers": {
+    "erpnext": {
+      "command": "python",
+      "args": ["-m", "src.server"],
+      "cwd": "/path/to/erpnext-mcp-server"
+    }
+  }
+}
+```
+
+## Tools (121)
+
+| Module | Tools | What |
 |---|---|---|
-| Documents | 5 | Generic CRUD on ANY DocType |
-| Accounting | 12 | Sales/Purchase Invoice, Payment, Journal Entry, P&L, Balance Sheet, Trial Balance, Exchange Rate |
-| Selling | 17 | Customer, Sales Order, Quotation, Lead, Opportunity, CRM pipeline |
-| Buying | 13 | Supplier, Purchase Order, Purchase Receipt, Material Request, returns |
-| Stock | 17 | Item, Stock Entry, Delivery Note, Stock Balance, Batch, Serial No, Warehouse |
-| HR | 25 | Employee, Leave, Attendance, Expense, Payroll, Salary, Loan, Department |
-| Manufacturing | 13 | Work Order, BOM, Production Plan, Job Card |
-| Projects | 9 | Project, Task, Timesheet |
-| Assets | 10 | Asset, Category, Maintenance, Repair, Scrap, Restore |
+| Documents | 5 | Generic CRUD on any DocType |
+| Accounting | 12 | Invoices, payments, journals, P&L, balance sheet, trial balance |
+| Selling | 17 | Customer, SO, quotation, lead, opportunity, CRM |
+| Buying | 13 | Supplier, PO, receipt, material request, returns |
+| Stock | 17 | Item, stock entry, DN, balance, batch, serial, warehouse |
+| HR | 25 | Employee, leave, attendance, expense, payroll, salary, loan |
+| Manufacturing | 13 | Work order, BOM, production plan, job card |
+| Projects | 9 | Project, task, timesheet |
+| Assets | 10 | Asset, category, maintenance, repair, scrap |
 
-## MCP Resources
+## Resources
 
-- `erpnext://companies` — List companies
-- `erpnext://customers` — List customers
-- `erpnext://suppliers` — List suppliers
-- `erpnext://items` — List items
-- `erpnext://employees` — List active employees
+- `erpnext://companies` — companies
+- `erpnext://customers` — customers
+- `erpnext://suppliers` — suppliers
+- `erpnext://items` — items
+- `erpnext://employees` — active employees
 
-## MCP Prompts
+## Prompts
 
-- `review_overdue_invoices` — Analyze overdue invoices and suggest actions
-- `monthly_financial_summary` — Monthly P&L + balance sheet summary
-- `prepare_payroll` — Prepare payroll with statutory breakdown
-- `purchase_order_workflow` — End-to-end PO from stock levels
-- `manufacturing_report` — Work order status and material availability
-
-## How It Works
-
-This server has **zero business logic**. It:
-
-1. Defines MCP tools (name, description, inputSchema)
-2. Calls ERPNext's REST API directly
-3. Returns ERPNext's response
-
-All business logic (approvals, validation, compliance) lives in ERPNext itself. This server is purely a protocol adapter.
-
-## ERPNext API Coverage
-
-The server uses two ERPNext API types:
-
-**Resource API** (generic CRUD):
-```
-GET    /api/resource/{DocType}           # List
-POST   /api/resource/{DocType}           # Create
-GET    /api/resource/{DocType}/{name}    # Read
-PUT    /api/resource/{DocType}/{name}    # Update
-DELETE /api/resource/{DocType}/{name}    # Delete
-```
-
-**Method API** (whitelisted functions):
-```
-GET/POST /api/method/{dotted.path}       # Call any whitelisted function
-```
+- `review_overdue_invoices` — overdue invoice analysis
+- `monthly_financial_summary` — P&L + balance sheet
+- `prepare_payroll` — payroll with statutory breakdown
+- `purchase_order_workflow` — PO from stock levels
+- `manufacturing_report` — work order status + materials
 
 ## Project Structure
 
 ```
-erpnext-mcp-server/
-├── src/
-│   ├── __init__.py
-│   ├── server.py              # MCP server entry point (FastMCP)
-│   ├── config.py              # Settings (ERPNext URL, auth)
-│   ├── erpnext_client.py      # Direct ERPNext REST API client
-│   └── tools/
-│       ├── documents.py       # Generic DocType CRUD
-│       ├── accounting.py      # Invoices, payments, reports
-│       ├── selling.py         # Customer, SO, Quotation, Lead, Opportunity
-│       ├── buying.py          # Supplier, PO, PR, Material Request
-│       ├── stock.py           # Item, Stock Entry, DN, Balance, Batch
-│       ├── hr.py              # Employee, Leave, Attendance, Payroll
-│       ├── manufacturing.py   # Work Order, BOM, Production Plan
-│       ├── projects.py        # Project, Task, Timesheet
-│       └── assets.py          # Asset, Maintenance, Repair
-├── tests/
-│   └── test_erpnext_client.py # Client tests (mocked HTTP)
-├── pyproject.toml
-├── .env.example
-└── README.md
+src/
+├── server.py              # FastMCP entry point
+├── config.py              # Settings (env vars)
+├── erpnext_client.py      # httpx client → ERPNext REST API
+└── tools/
+    ├── documents.py       # Generic CRUD
+    ├── accounting.py      # Invoices, payments, reports
+    ├── selling.py         # Sales cycle
+    ├── buying.py          # Purchase cycle
+    ├── stock.py           # Inventory
+    ├── hr.py              # HR & payroll
+    ├── manufacturing.py   # Production
+    ├── projects.py        # Projects & timesheets
+    └── assets.py          # Fixed assets
+tests/
+└── test_erpnext_client.py # Mocked HTTP tests
 ```
+
+## How It Works
+
+Zero business logic. The server:
+
+1. Defines MCP tools (name, description, inputSchema)
+2. Calls ERPNext REST API (Resource API + Method API)
+3. Returns the response
+
+All business logic lives in ERPNext. This is a protocol adapter.
 
 ## License
 
