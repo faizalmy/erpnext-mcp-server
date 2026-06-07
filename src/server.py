@@ -40,14 +40,43 @@ mcp = FastMCP(
     ),
 )
 
+# ── CLI args (parsed once at import) ─────────────────────────
+
+
+def _parse_args() -> dict:
+    """Parse CLI args into transport config."""
+    args = sys.argv[1:]
+    transport = "stdio"
+    host = settings.http_host
+    port = settings.http_port
+    refresh = "--refresh" in args
+
+    if "--http" in args:
+        transport = "streamable-http"
+    elif "--sse" in args:
+        transport = "sse"
+
+    for i, arg in enumerate(args):
+        if arg == "--host" and i + 1 < len(args):
+            host = args[i + 1]
+        elif arg == "--port" and i + 1 < len(args):
+            port = int(args[i + 1])
+
+    return {"transport": transport, "host": host, "port": port, "refresh": refresh}
+
+
+config = _parse_args()
+
+
 # ── Register tools ────────────────────────────────────────────
 
-# 1. Auto-discovered CRUD tools from DocType metadata
+# 1. Auto-discovered CRUD tools from DocType metadata (cached)
 log.info("Discovering DocTypes from ERPNext...")
 crud_count = discovery.register_tools(
     mcp,
     include=settings.discovery_include_list,
     exclude=settings.discovery_exclude_list,
+    force_refresh=config["refresh"],
 )
 log.info("Auto-discovered %d CRUD tools", crud_count)
 
@@ -182,30 +211,8 @@ def manufacturing_report() -> str:
 # ── Entry point ───────────────────────────────────────────────
 
 
-def _parse_args() -> dict:
-    """Parse CLI args into transport config."""
-    args = sys.argv[1:]
-    transport = "stdio"
-    host = settings.http_host
-    port = settings.http_port
-
-    if "--http" in args:
-        transport = "streamable-http"
-    elif "--sse" in args:
-        transport = "sse"
-
-    for i, arg in enumerate(args):
-        if arg == "--host" and i + 1 < len(args):
-            host = args[i + 1]
-        elif arg == "--port" and i + 1 < len(args):
-            port = int(args[i + 1])
-
-    return {"transport": transport, "host": host, "port": port}
-
-
 def main():
     """Run the MCP server."""
-    config = _parse_args()
     transport = config["transport"]
 
     if transport != "stdio":

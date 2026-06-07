@@ -3,9 +3,17 @@
 Fetches DocType metadata from ERPNext at startup and generates
 CRUD MCP tools dynamically. No hardcoded tool definitions —
 the server adapts to whatever DocTypes exist in the connected instance.
+
+Metadata is cached to disk (default: .cache/doctypes.json) so subsequent
+startups are instant. Use --refresh or set ERPNEXT_CACHE_TTL=0 to force
+re-fetch from ERPNext.
 """
 
+import json
 import logging
+import os
+import time
+from pathlib import Path
 from typing import Any, Callable
 
 from mcp.server.fastmcp import FastMCP
@@ -13,6 +21,53 @@ from mcp.server.fastmcp import FastMCP
 from .erpnext_client import erpnext
 
 log = logging.getLogger(__name__)
+
+# ── Cache ─────────────────────────────────────────────────────
+
+DEFAULT_CACHE_DIR = ".cache"
+DEFAULT_CACHE_FILE = "doctypes.json"
+DEFAULT_CACHE_TTL = 86400  # 24 hours
+
+
+def _get_cache_path() -> Path:
+    """Resolve cache file path from env or default."""
+    cache_dir = os.environ.get("ERPNEXT_CACHE_DIR", DEFAULT_CACHE_DIR)
+    cache_file = os.environ.get("ERPNEXT_CACHE_FILE", DEFAULT_CACHE_FILE)
+    return Path(cache_dir) / cache_file
+
+
+def _get_cache_ttl() -> int:
+    """Cache TTL in seconds. 0 = always refresh."""
+    return int(os.environ.get("ERPNEXT_CACHE_TTL", str(DEFAULT_CACHE_TTL)))
+
+
+def _load_cache(path: Path) -> dict | None:
+    """Load cached metadata if valid and fresh."""
+    if not path.exists():
+        return None
+    try:
+        data = json.loads(path.read_text())
+        cached_at = data.get("_cached_at", 0)
+        ttl = _get_cache_ttl()
+        if ttl > 0 and (time.time() - cached_at) > ttl:
+            log.info("Cache expired (%.0fh old, TTL=%dh)", (time.time() - cached_at) / 3600, ttl / 3600)
+            return None
+        return data
+    except (json.JSONDecodeError, KeyError) as e:
+        log.warning("Invalid cache file, will re-fetch: %s", e)
+        return None
+
+
+def _save_cache(path: Path, data: dict) -> None:
+    """Save metadata to cache file."""
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        data["_cached_at"] = time.time()
+        path.write_text(json.dumps(data, indent=2, ensure_ascii=False))
+        log.info("Cache saved to %s", path)
+    except Exception as e:
+        log.warning("Could not save cache: %s", e)
+
 
 # Skip these — they're internal to Frappe/ERPNext framework
 SYSTEM_DOCTYPES = frozenset({
@@ -312,16 +367,41 @@ class DiscoveryEngine:
 
     def register_tools(self, mcp: FastMCP,
                        include: list[str] | None = None,
-                       exclude: list[str] | None = None) -> int:
+                       exclude: list[str] | None = None,
+                       force_refresh: bool = False) -> int:
         """Discover DocTypes and register CRUD tools on the MCP server.
+
+        Uses file cache when available. Set force_refresh=True or
+        ERPNEXT_CACHE_TTL=0 to bypass cache.
 
         Returns the number of tools registered.
         """
-        doctypes = self.discover(include=include, exclude=exclude)
-        tool_count = 0
+        cache_path = _get_cache_path()
+        cached = None if force_refresh else _load_cache(cache_path)
 
-        for dt in doctypes:
-            meta = self.get_meta(dt)
+        if cached:
+            # Load from cache — instant startup
+            self._doctypes = cached.get("doctypes", [])
+            self._cache = cached.get("metadata", {})
+            log.info("Loaded %d DocTypes + %d metadata entries from cache (%s)",
+                     len(self._doctypes), len(self._cache), cache_path)
+        else:
+            # Fresh fetch from ERPNext
+            doctypes = self.discover(include=include, exclude=exclude)
+            log.info("Fetching metadata for %d DocTypes...", len(doctypes))
+            for dt in doctypes:
+                self.get_meta(dt)
+
+            # Save to cache
+            _save_cache(cache_path, {
+                "doctypes": self._doctypes,
+                "metadata": self._cache,
+            })
+
+        # Register tools from in-memory data
+        tool_count = 0
+        for dt in self._doctypes:
+            meta = self._cache.get(dt) or self.get_meta(dt)
             if not meta:
                 continue
 
