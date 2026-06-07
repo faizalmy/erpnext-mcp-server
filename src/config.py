@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     # Timeouts (seconds)
     timeout: float = 30.0
 
+    # HTTP transport settings (for --http mode)
+    http_host: str = "127.0.0.1"
+    http_port: int = 8000
+
     model_config = {"env_file": ".env", "env_prefix": "ERPNEXT_"}
 
     @property

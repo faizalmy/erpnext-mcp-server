@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "erpnext-mcp-server"
 version = "0.1.0"
-description = "MCP server for AI-ERP — thin protocol adapter over AI-ERP Gateway"
+description = "Standalone MCP server for ERPNext — auto-discovers DocTypes, serves 250+ tools over stdio or HTTP"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.11"

@@ -8,8 +8,10 @@ Tools come from two sources:
 2. Curated: High-level operations (conversions, reports, workflows)
 
 Usage:
-    python -m src.server          # stdio transport (default)
-    python -m src.server --sse    # SSE transport (for remote agents)
+    python -m src.server              # stdio transport (default, for local agents)
+    python -m src.server --http       # Streamable HTTP at http://127.0.0.1:8000/mcp
+    python -m src.server --sse        # SSE transport at http://127.0.0.1:8000/sse
+    python -m src.server --http --port 3000 --host 0.0.0.0
 """
 
 import logging
@@ -180,11 +182,41 @@ def manufacturing_report() -> str:
 # ── Entry point ───────────────────────────────────────────────
 
 
+def _parse_args() -> dict:
+    """Parse CLI args into transport config."""
+    args = sys.argv[1:]
+    transport = "stdio"
+    host = settings.http_host
+    port = settings.http_port
+
+    if "--http" in args:
+        transport = "streamable-http"
+    elif "--sse" in args:
+        transport = "sse"
+
+    for i, arg in enumerate(args):
+        if arg == "--host" and i + 1 < len(args):
+            host = args[i + 1]
+        elif arg == "--port" and i + 1 < len(args):
+            port = int(args[i + 1])
+
+    return {"transport": transport, "host": host, "port": port}
+
+
 def main():
     """Run the MCP server."""
-    transport = "stdio"
-    if "--sse" in sys.argv:
-        transport = "sse"
+    config = _parse_args()
+    transport = config["transport"]
+
+    if transport != "stdio":
+        # Override FastMCP settings for HTTP/SSE modes
+        mcp.settings.host = config["host"]
+        mcp.settings.port = config["port"]
+        log.info(
+            "Starting %s transport at http://%s:%d/mcp",
+            transport, config["host"], config["port"],
+        )
+
     mcp.run(transport=transport)
 
 
