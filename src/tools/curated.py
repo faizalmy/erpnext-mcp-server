@@ -15,10 +15,22 @@ TOOL_COUNT = 36
 
 def register(mcp: FastMCP):
     """Register curated tools on the MCP server."""
+    _register_generic(mcp)
+    _register_accounting(mcp)
+    _register_selling(mcp)
+    _register_buying(mcp)
+    _register_stock(mcp)
+    _register_hr(mcp)
+    _register_manufacturing(mcp)
+    _register_projects(mcp)
+    _register_assets(mcp)
 
-    # ═══════════════════════════════════════════════════════════
-    # GENERIC — flexible entry points
-    # ═══════════════════════════════════════════════════════════
+
+# ═══════════════════════════════════════════════════════════
+# GENERIC — flexible entry points
+# ═══════════════════════════════════════════════════════════
+
+def _register_generic(mcp: FastMCP):
 
     @mcp.tool()
     def list_documents(
@@ -78,9 +90,12 @@ def register(mcp: FastMCP):
         """
         return erpnext.cancel_document(doctype, name)
 
-    # ═══════════════════════════════════════════════════════════
-    # ACCOUNTING
-    # ═══════════════════════════════════════════════════════════
+
+# ═══════════════════════════════════════════════════════════
+# ACCOUNTING
+# ═══════════════════════════════════════════════════════════
+
+def _register_accounting(mcp: FastMCP):
 
     @mcp.tool()
     def get_account_balance(account: str, date: str = "", company: str = "") -> dict:
@@ -143,9 +158,12 @@ def register(mcp: FastMCP):
         """
         return erpnext.make_sales_return(source_name=sales_invoice)
 
-    # ═══════════════════════════════════════════════════════════
-    # SELLING — document conversions
-    # ═══════════════════════════════════════════════════════════
+
+# ═══════════════════════════════════════════════════════════
+# SELLING — document conversions
+# ═══════════════════════════════════════════════════════════
+
+def _register_selling(mcp: FastMCP):
 
     @mcp.tool()
     def convert_quotation_to_sales_order(quotation: str) -> dict:
@@ -217,9 +235,12 @@ def register(mcp: FastMCP):
         """
         return erpnext.make_customer_from_lead(source_name=lead)
 
-    # ═══════════════════════════════════════════════════════════
-    # BUYING — document conversions
-    # ═══════════════════════════════════════════════════════════
+
+# ═══════════════════════════════════════════════════════════
+# BUYING — document conversions
+# ═══════════════════════════════════════════════════════════
+
+def _register_buying(mcp: FastMCP):
 
     @mcp.tool()
     def convert_po_to_receipt(purchase_order: str) -> dict:
@@ -277,9 +298,12 @@ def register(mcp: FastMCP):
         """
         return erpnext.make_purchase_order_from_mr(source_name=material_request)
 
-    # ═══════════════════════════════════════════════════════════
-    # STOCK
-    # ═══════════════════════════════════════════════════════════
+
+# ═══════════════════════════════════════════════════════════
+# STOCK
+# ═══════════════════════════════════════════════════════════
+
+def _register_stock(mcp: FastMCP):
 
     @mcp.tool()
     def get_item_details(item_code: str, company: str = "",
@@ -373,9 +397,12 @@ def register(mcp: FastMCP):
             posting_date_from=from_date, posting_date_to=to_date,
         )
 
-    # ═══════════════════════════════════════════════════════════
-    # HR
-    # ═══════════════════════════════════════════════════════════
+
+# ═══════════════════════════════════════════════════════════
+# HR
+# ═══════════════════════════════════════════════════════════
+
+def _register_hr(mcp: FastMCP):
 
     @mcp.tool()
     def get_leave_balance(employee: str, leave_type: str,
@@ -406,9 +433,12 @@ def register(mcp: FastMCP):
         """
         return erpnext.get_leave_days(employee, leave_type, from_date, to_date)
 
-    # ═══════════════════════════════════════════════════════════
-    # MANUFACTURING
-    # ═══════════════════════════════════════════════════════════
+
+# ═══════════════════════════════════════════════════════════
+# MANUFACTURING
+# ═══════════════════════════════════════════════════════════
+
+def _register_manufacturing(mcp: FastMCP):
 
     @mcp.tool()
     def get_bom_items(bom: str, company: str = "", qty: float = 0) -> dict:
@@ -436,9 +466,12 @@ def register(mcp: FastMCP):
         """
         return erpnext.get_exploded_items(bom, qty=qty)
 
-    # ═══════════════════════════════════════════════════════════
-    # PROJECTS
-    # ═══════════════════════════════════════════════════════════
+
+# ═══════════════════════════════════════════════════════════
+# PROJECTS
+# ═══════════════════════════════════════════════════════════
+
+def _register_projects(mcp: FastMCP):
 
     @mcp.tool()
     def convert_timesheet_to_invoice(timesheet: str) -> dict:
@@ -452,9 +485,12 @@ def register(mcp: FastMCP):
         """
         return erpnext.make_sales_invoice_from_timesheet(source_name=timesheet)
 
-    # ═══════════════════════════════════════════════════════════
-    # ASSETS
-    # ═══════════════════════════════════════════════════════════
+
+# ═══════════════════════════════════════════════════════════
+# ASSETS
+# ═══════════════════════════════════════════════════════════
+
+def _register_assets(mcp: FastMCP):
 
     @mcp.tool()
     def create_asset_invoice(asset: str) -> dict:

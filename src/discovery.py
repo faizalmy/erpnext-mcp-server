@@ -22,6 +22,20 @@ from .erpnext_client import erpnext
 
 log = logging.getLogger(__name__)
 
+# ── Field-type → JSON Schema lookup ───────────────────────────
+_SIMPLE_TYPES: dict[str, dict] = {}
+for _t in ("Int", "Long Int", "Duration"):
+    _SIMPLE_TYPES[_t] = {"type": "integer"}
+for _t in ("Float", "Percent", "Currency", "Rating"):
+    _SIMPLE_TYPES[_t] = {"type": "number"}
+_SIMPLE_TYPES["Check"] = {"type": "boolean"}
+_SIMPLE_TYPES["Date"] = {"type": "string", "format": "date"}
+_SIMPLE_TYPES["Datetime"] = {"type": "string", "format": "date-time"}
+_SIMPLE_TYPES["Time"] = {"type": "string", "format": "time"}
+for _t in ("Small Text", "Text", "Text Editor", "HTML Editor",
+           "Markdown Editor", "Code", "JSON"):
+    _SIMPLE_TYPES[_t] = {"type": "string"}
+
 # ── Cache ─────────────────────────────────────────────────────
 
 DEFAULT_CACHE_DIR = ".cache"
@@ -129,18 +143,9 @@ def _field_type_to_schema(field: dict) -> dict[str, Any]:
     """Map ERPNext field type to JSON Schema type."""
     ft = field.get("fieldtype", "Data")
 
-    if ft in ("Int", "Long Int", "Duration"):
-        return {"type": "integer"}
-    if ft in ("Float", "Percent", "Currency", "Rating"):
-        return {"type": "number"}
-    if ft == "Check":
-        return {"type": "boolean"}
-    if ft in ("Date", "Datetime", "Time"):
-        fmt = "date" if ft == "Date" else ("date-time" if ft == "Datetime" else "time")
-        return {"type": "string", "format": fmt}
-    if ft in ("Small Text", "Text", "Text Editor", "HTML Editor",
-              "Markdown Editor", "Code", "JSON"):
-        return {"type": "string"}
+    if ft in _SIMPLE_TYPES:
+        return _SIMPLE_TYPES[ft]
+
     if ft == "Select":
         s: dict[str, Any] = {"type": "string"}
         options = field.get("options", "")
@@ -149,12 +154,14 @@ def _field_type_to_schema(field: dict) -> dict[str, Any]:
             if opts:
                 s["enum"] = opts
         return s
+
     if ft == "Link":
         target = field.get("options", "")
         s = {"type": "string"}
         if target:
             s["description"] = f"Must be a valid {target} name"
         return s
+
     if ft == "Table":
         child = field.get("options", "")
         return {"type": "array", "items": {"type": "object"},
