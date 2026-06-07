@@ -270,6 +270,7 @@ class DiscoveryEngine:
             "name": f"list_{safe}",
             "description": (f"List {doctype} records. "
                             f"Available fields: {', '.join(schema_props[:15])}"),
+            "annotations": {"readOnlyHint": True, "destructiveHint": False},
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -291,6 +292,7 @@ class DiscoveryEngine:
         config = {
             "name": f"get_{safe}",
             "description": f"Get a single {doctype} by name/ID.",
+            "annotations": {"readOnlyHint": True, "destructiveHint": False},
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -314,6 +316,7 @@ class DiscoveryEngine:
         config = {
             "name": f"create_{safe}",
             "description": desc,
+            "annotations": {"readOnlyHint": False, "destructiveHint": False},
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -333,6 +336,7 @@ class DiscoveryEngine:
         config = {
             "name": f"update_{safe}",
             "description": f"Update an existing {doctype} (partial update).",
+            "annotations": {"readOnlyHint": False, "destructiveHint": False},
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -354,6 +358,7 @@ class DiscoveryEngine:
         config = {
             "name": f"delete_{safe}",
             "description": f"Delete a {doctype} permanently.",
+            "annotations": {"readOnlyHint": False, "destructiveHint": True},
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -419,8 +424,11 @@ class DiscoveryEngine:
 
             for fn, config in builders:
                 try:
-                    mcp.tool(name=config["name"],
-                             description=config["description"])(fn)
+                    mcp.tool(
+                        name=config["name"],
+                        description=config["description"],
+                        annotations=config.get("annotations"),
+                    )(fn)
                     tool_count += 1
                 except Exception as e:
                     log.warning("Failed to register %s: %s",

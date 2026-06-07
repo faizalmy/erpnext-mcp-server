@@ -30,6 +30,9 @@ class Settings(BaseSettings):
     http_host: str = "127.0.0.1"
     http_port: int = 8000
 
+    # API key for HTTP transport auth (empty = no auth)
+    mcp_api_key: str = ""
+
     model_config = {"env_file": ".env", "env_prefix": "ERPNEXT_"}
 
     @property

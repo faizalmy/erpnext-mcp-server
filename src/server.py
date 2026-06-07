@@ -12,10 +12,13 @@ Usage:
     python -m src.server --http       # Streamable HTTP at http://127.0.0.1:8000/mcp
     python -m src.server --sse        # SSE transport at http://127.0.0.1:8000/sse
     python -m src.server --http --port 3000 --host 0.0.0.0
+    python -m src.server --http --refresh  # force re-fetch DocType metadata
 """
 
+import json
 import logging
 import sys
+import time
 
 from mcp.server.fastmcp import FastMCP
 
@@ -25,6 +28,8 @@ from .tools import curated
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
+
+_start_time = time.time()
 
 # ── MCP Server ────────────────────────────────────────────────
 
@@ -83,6 +88,8 @@ log.info("Auto-discovered %d CRUD tools", crud_count)
 # 2. Curated tools (conversions, reports, workflows)
 curated.register(mcp)
 log.info("Registered curated tools")
+
+_total_tools = crud_count + curated.TOOL_COUNT
 
 
 # ── MCP Resources (read-only structured data) ─────────────────
@@ -215,16 +222,72 @@ def main():
     """Run the MCP server."""
     transport = config["transport"]
 
-    if transport != "stdio":
-        # Override FastMCP settings for HTTP/SSE modes
+    if transport == "streamable-http":
+        import uvicorn
+        from starlette.applications import Starlette
+        from starlette.requests import Request
+        from starlette.responses import JSONResponse
+        from starlette.routing import Route
+
+        mcp_api_key = settings.mcp_api_key
+
+        # Get FastMCP's ASGI app
+        mcp_app = mcp.streamable_http_app()
+
+        async def health(request: Request) -> JSONResponse:
+            """Health check endpoint for Docker/load balancers."""
+            return JSONResponse({
+                "status": "ok",
+                "server": "erpnext-mcp-server",
+                "tools": _total_tools,
+                "uptime_seconds": round(time.time() - _start_time, 1),
+            })
+
+        async def dispatch(scope, receive, send):
+            """Route: /health → health handler, everything else → FastMCP (with auth)."""
+            path = scope.get("path", "/")
+
+            # Health check — no auth required
+            if path == "/health" and scope["type"] == "http":
+                response = JSONResponse({
+                    "status": "ok",
+                    "server": "erpnext-mcp-server",
+                    "tools": _total_tools,
+                    "uptime_seconds": round(time.time() - _start_time, 1),
+                })
+                return await response(scope, receive, send)
+
+            # Auth check for MCP endpoints
+            if scope["type"] == "http" and mcp_api_key:
+                headers = dict(scope.get("headers", []))
+                auth = headers.get(b"authorization", b"").decode()
+                if not auth.startswith("Bearer ") or auth[7:] != mcp_api_key:
+                    response = JSONResponse(
+                        {"error": "Unauthorized", "detail": "Invalid or missing Bearer token"},
+                        status_code=401,
+                    )
+                    return await response(scope, receive, send)
+
+            # Delegate to FastMCP
+            return await mcp_app(scope, receive, send)
+
+        app = dispatch
+
+        if mcp_api_key:
+            log.info("Auth enabled (ERPNEXT_MCP_API_KEY is set)")
+        log.info(
+            "Starting HTTP at http://%s:%d (health: /health, mcp: /mcp)",
+            config["host"], config["port"],
+        )
+        uvicorn.run(app, host=config["host"], port=config["port"],
+                    log_level="info")
+    elif transport == "sse":
         mcp.settings.host = config["host"]
         mcp.settings.port = config["port"]
-        log.info(
-            "Starting %s transport at http://%s:%d/mcp",
-            transport, config["host"], config["port"],
-        )
-
-    mcp.run(transport=transport)
+        log.info("Starting SSE at http://%s:%d/sse", config["host"], config["port"])
+        mcp.run(transport="sse")
+    else:
+        mcp.run(transport="stdio")
 
 
 if __name__ == "__main__":

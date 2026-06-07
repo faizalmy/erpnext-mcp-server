@@ -10,6 +10,8 @@ from mcp.server.fastmcp import FastMCP
 
 from ..erpnext_client import erpnext
 
+TOOL_COUNT = 36
+
 
 def register(mcp: FastMCP):
     """Register curated tools on the MCP server."""
