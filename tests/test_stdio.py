@@ -1,14 +1,19 @@
 """Test erpnext-mcp-server via stdio transport using the official MCP client SDK."""
 import asyncio
 import json
+import pathlib
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
+
+# Project root (one level up from tests/)
+ROOT = pathlib.Path(__file__).resolve().parent.parent
 
 
 async def main():
     server = StdioServerParameters(
-        command='.venv/bin/python',
+        command=str(ROOT / '.venv' / 'bin' / 'python'),
         args=['-m', 'src.server'],
+        cwd=str(ROOT),
     )
 
     async with stdio_client(server) as (read, write):
