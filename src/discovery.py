@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from mcp.server.fastmcp import FastMCP
+from pydantic import create_model, Field
 
 from .erpnext_client import erpnext
 
@@ -311,11 +312,63 @@ class DiscoveryEngine:
         }
         return fn, config
 
+    def _schema_to_pydantic_model(self, doctype: str, schema: dict,
+                                   required: list[str]) -> type:
+        """Create a dynamic Pydantic model from ERPNext field schema.
+
+        This gives FastMCP proper type hints so it generates detailed
+        JSON Schema with field descriptions, types, and required markers.
+        """
+        field_defs: dict[str, Any] = {}
+        required_set = set(required)
+
+        for field_name, field_schema in schema.items():
+            ftype = field_schema.get("type", "string")
+            desc = field_schema.get("description", "")
+            enum_vals = field_schema.get("enum")
+
+            # Map JSON Schema type to Python type
+            type_map = {
+                "string": str,
+                "integer": int,
+                "number": float,
+                "boolean": bool,
+                "array": list,
+                "object": dict,
+            }
+            py_type = type_map.get(ftype, str)
+
+            if enum_vals:
+                # For Select fields with known options
+                field_defs[field_name] = (
+                    py_type,
+                    Field(description=desc, json_schema_extra={"enum": enum_vals})
+                )
+            elif field_name in required_set:
+                field_defs[field_name] = (
+                    py_type,
+                    Field(description=desc)
+                )
+            else:
+                # Optional field — use None default
+                field_defs[field_name] = (
+                    py_type | None,
+                    Field(default=None, description=desc)
+                )
+
+        model_name = f"{doctype.replace(' ', '')}Data"
+        return create_model(model_name, **field_defs)
+
     def _make_create_fn(self, doctype: str, schema: dict,
                         required: list[str]) -> tuple[Callable, dict]:
         safe = doctype.replace(" ", "_")
-        def fn(data: dict) -> dict:
-            return erpnext.create_document(doctype, data)
+        DataModel = self._schema_to_pydantic_model(doctype, schema, required)
+
+        def fn(data: DataModel) -> dict:  # type: ignore[type-arg]
+            return erpnext.create_document(doctype, data.model_dump(exclude_none=True))
+
+        fn.__name__ = f"create_{safe}"
+        fn.__qualname__ = f"create_{safe}"
         desc = f"Create a new {doctype}."
         if required:
             desc += f" Required: {', '.join(required)}."
@@ -324,37 +377,23 @@ class DiscoveryEngine:
             "name": f"create_{safe}",
             "description": desc,
             "annotations": {"readOnlyHint": False, "destructiveHint": False},
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "data": {"type": "object",
-                             "description": f"Field values for the new {doctype}",
-                             "properties": schema},
-                },
-                "required": ["data"],
-            },
         }
         return fn, config
 
     def _make_update_fn(self, doctype: str, schema: dict) -> tuple[Callable, dict]:
         safe = doctype.replace(" ", "_")
-        def fn(name: str, data: dict) -> dict:
-            return erpnext.update_document(doctype, name, data)
+        # For update, all fields are optional (partial update)
+        DataModel = self._schema_to_pydantic_model(doctype, schema, required=[])
+
+        def fn(name: str, data: DataModel) -> dict:  # type: ignore[type-arg]
+            return erpnext.update_document(doctype, name, data.model_dump(exclude_none=True))
+
+        fn.__name__ = f"update_{safe}"
+        fn.__qualname__ = f"update_{safe}"
         config = {
             "name": f"update_{safe}",
             "description": f"Update an existing {doctype} (partial update).",
             "annotations": {"readOnlyHint": False, "destructiveHint": False},
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "name": {"type": "string",
-                             "description": f"The {doctype} name or ID to update"},
-                    "data": {"type": "object",
-                             "description": "Fields to update (partial)",
-                             "properties": schema},
-                },
-                "required": ["name", "data"],
-            },
         }
         return fn, config
 
