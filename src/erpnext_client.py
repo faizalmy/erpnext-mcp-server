@@ -6,12 +6,36 @@ All tool modules call erpnext.* functions — they never touch httpx directly.
 Supports two auth modes:
 1. Token auth (api_key:api_secret) — production
 2. Password auth (usr/pwd session cookie) — development
+
+Multi-tenant: supports per-request credential overrides via contextvars.
+When _ctx_api_key/_ctx_api_secret are set (from HTTP headers), a per-request
+httpx client is used instead of the shared singleton.
 """
 
+import contextvars
 import json
 import httpx
 
 from .config import settings
+
+# Per-request credential overrides (set by HTTP dispatch from headers)
+_ctx_api_key: contextvars.ContextVar[str | None] = contextvars.ContextVar("erpnext_api_key", default=None)
+_ctx_api_secret: contextvars.ContextVar[str | None] = contextvars.ContextVar("erpnext_api_secret", default=None)
+
+
+def set_request_credentials(api_key: str | None, api_secret: str | None) -> None:
+    """Set per-request ERPNext credentials (called from HTTP dispatch)."""
+    _ctx_api_key.set(api_key)
+    _ctx_api_secret.set(api_secret)
+
+
+def _get_auth_header() -> dict[str, str]:
+    """Get auth header — per-request override or server default."""
+    api_key = _ctx_api_key.get()
+    api_secret = _ctx_api_secret.get()
+    if api_key and api_secret:
+        return {"Authorization": f"token {api_key}:{api_secret}"}
+    return settings.auth_header
 
 
 class ERPNextClient:
@@ -50,6 +74,16 @@ class ERPNextClient:
         )
         self._logged_in = r.json().get("message") == "Logged In"
 
+    def _request(self, method: str, url: str, **kwargs) -> httpx.Response:
+        """Make a request with per-request auth override if set."""
+        auth_header = _get_auth_header()
+        # Merge headers: per-request auth overrides default
+        if auth_header != settings.auth_header:
+            headers = kwargs.pop("headers", {})
+            headers.update(auth_header)
+            kwargs["headers"] = headers
+        return self._client.request(method, url, **kwargs)
+
     # ═══════════════════════════════════════════════════════════
     # RESOURCE API (CRUD on any DocType)
     # Docs: https://docs.frappe.io/framework/user/en/api/rest
@@ -58,10 +92,7 @@ class ERPNextClient:
     def list_documents(self, doctype: str, fields: list[str] | None = None,
                        filters: list | None = None, limit: int = 20,
                        offset: int = 0, order_by: str = "") -> dict:
-        """List documents of a DocType.
-
-        GET /api/resource/{doctype}?fields=[...]&filters=[...]&limit_page_length=N
-        """
+        """List documents of a DocType."""
         params: dict = {"limit_page_length": limit, "limit_start": offset}
         if fields:
             params["fields"] = json.dumps(fields)
@@ -69,53 +100,39 @@ class ERPNextClient:
             params["filters"] = json.dumps(filters)
         if order_by:
             params["order_by"] = order_by
-        r = self._client.get(f"{settings.api_base}/{doctype}", params=params)
+        r = self._request("GET", f"{settings.api_base}/{doctype}", params=params)
         r.raise_for_status()
         data = r.json()
         return {"data": data.get("data", []), "count": len(data.get("data", []))}
 
     def get_document(self, doctype: str, name: str) -> dict:
-        """Get a single document by name.
-
-        GET /api/resource/{doctype}/{name}
-        """
-        r = self._client.get(f"{settings.api_base}/{doctype}/{name}")
+        """Get a single document by name."""
+        r = self._request("GET", f"{settings.api_base}/{doctype}/{name}")
         r.raise_for_status()
         return r.json().get("data", {})
 
     def create_document(self, doctype: str, data: dict) -> dict:
-        """Create a new document.
-
-        POST /api/resource/{doctype}
-        """
-        r = self._client.post(f"{settings.api_base}/{doctype}", json=data)
+        """Create a new document."""
+        r = self._request("POST", f"{settings.api_base}/{doctype}", json=data)
         r.raise_for_status()
         return r.json().get("data", {})
 
     def update_document(self, doctype: str, name: str, data: dict) -> dict:
-        """Update an existing document (partial update).
-
-        PUT /api/resource/{doctype}/{name}
-        """
-        r = self._client.put(f"{settings.api_base}/{doctype}/{name}", json=data)
+        """Update an existing document (partial update)."""
+        r = self._request("PUT", f"{settings.api_base}/{doctype}/{name}", json=data)
         r.raise_for_status()
         return r.json().get("data", {})
 
     def delete_document(self, doctype: str, name: str) -> dict:
-        """Delete a document.
-
-        DELETE /api/resource/{doctype}/{name}
-        """
-        r = self._client.delete(f"{settings.api_base}/{doctype}/{name}")
+        """Delete a submitted document."""
+        r = self._request("DELETE", f"{settings.api_base}/{doctype}/{name}")
         r.raise_for_status()
         return {"message": "ok"}
 
     def submit_document(self, doctype: str, name: str) -> dict:
-        """Submit a draft document (finalize it).
-
-        Uses the Frappe method API: /api/method/frappe.client.submit
-        """
-        r = self._client.post(
+        """Submit a draft document (finalize it)."""
+        r = self._request(
+            "POST",
             f"{settings.method_base}/frappe.client.submit",
             json={"doctype": doctype, "name": name},
         )
@@ -123,11 +140,9 @@ class ERPNextClient:
         return r.json().get("message", {})
 
     def cancel_document(self, doctype: str, name: str) -> dict:
-        """Cancel a submitted document.
-
-        Uses the Frappe method API: /api/method/frappe.client.cancel
-        """
-        r = self._client.post(
+        """Cancel a submitted document."""
+        r = self._request(
+            "POST",
             f"{settings.method_base}/frappe.client.cancel",
             json={"doctype": doctype, "name": name},
         )
@@ -136,27 +151,19 @@ class ERPNextClient:
 
     # ═══════════════════════════════════════════════════════════
     # METHOD API (whitelisted Python functions)
-    # Docs: https://docs.frappe.io/framework/user/en/guides/integration/rest_api
     # ═══════════════════════════════════════════════════════════
 
     def call_method(self, method: str, **kwargs) -> dict:
-        """Call any whitelisted ERPNext/Frappe method.
-
-        GET/POST /api/method/{dotted.path}
-
-        Args:
-            method: Dotted path (e.g. 'erpnext.stock.utils.get_stock_balance')
-            kwargs: Method parameters
-        """
+        """Call any whitelisted ERPNext/Frappe method."""
         if kwargs:
-            r = self._client.post(f"{settings.method_base}/{method}", json=kwargs)
+            r = self._request("POST", f"{settings.method_base}/{method}", json=kwargs)
         else:
-            r = self._client.get(f"{settings.method_base}/{method}")
+            r = self._request("GET", f"{settings.method_base}/{method}")
         r.raise_for_status()
         return r.json().get("message", r.json())
 
     # ═══════════════════════════════════════════════════════════
-    # CONVENIENCE METHODS (common ERPNext workflows)
+    # CONVENIENCE METHODS
     # ═══════════════════════════════════════════════════════════
 
     # ── Accounting ────────────────────────────────────────
