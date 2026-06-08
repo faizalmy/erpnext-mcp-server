@@ -28,7 +28,7 @@ class Settings(BaseSettings):
 
     # HTTP transport settings (for --http mode)
     http_host: str = "127.0.0.1"
-    http_port: int = 8000
+    http_port: int = 3000
 
     # API key for HTTP transport auth (empty = no auth)
     mcp_api_key: str = ""

@@ -22,7 +22,7 @@ AI Agent (Claude, ChatGPT, Hermes, Cursor, etc.)
 ## Setup
 
 ```bash
-git clone https://github.com/your-org/erpnext-mcp-server.git
+git clone https://github.com/faizalmy/erpnext-mcp-server.git
 cd erpnext-mcp-server
 cp .env.example .env
 # Edit .env — point at your ERPNext
@@ -62,7 +62,8 @@ pytest tests/ -v
 | `ERPNEXT_DISCOVERY_INCLUDE` | (44 core DocTypes) | Comma-separated DocTypes to discover |
 | `ERPNEXT_DISCOVERY_EXCLUDE` | | Comma-separated DocTypes to skip |
 | `ERPNEXT_HTTP_HOST` | `127.0.0.1` | HTTP transport bind address |
-| `ERPNEXT_HTTP_PORT` | `8000` | HTTP transport port |
+| `ERPNEXT_HTTP_PORT` | `3000` | HTTP transport port |
+| `ERPNEXT_MCP_API_KEY` | | API key for HTTP transport auth (empty = no auth) |
 
 **Token auth** (production): set `ERPNEXT_API_KEY` + `ERPNEXT_API_SECRET`.
 
