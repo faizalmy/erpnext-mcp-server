@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     # API key for HTTP transport auth (empty = no auth)
     mcp_api_key: str = ""
 
-    model_config = {"env_file": ".env", "env_prefix": "ERPNEXT_"}
+    model_config = {"env_file": ".env"}
 
     @property
     def discovery_include_list(self) -> list[str] | None:

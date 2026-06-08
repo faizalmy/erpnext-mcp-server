@@ -22,8 +22,11 @@ services:
       ERPNEXT_API_SECRET: "${ERPNEXT_API_SECRET:-}"
       ERPNEXT_USR: "${ERPNEXT_USR:-Administrator}"
       ERPNEXT_PWD: "${ERPNEXT_PWD:-admin}"
+      # HTTP transport settings
+      HTTP_HOST: "0.0.0.0"
+      HTTP_PORT: "3000"
       # HTTP transport auth (empty = no auth)
-      ERPNEXT_MCP_API_KEY: "${ERPNEXT_MCP_API_KEY:-}"
+      MCP_API_KEY: "${MCP_API_KEY:-}"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     restart: unless-stopped

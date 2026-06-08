@@ -61,9 +61,9 @@ pytest tests/ -v
 | `ERPNEXT_PWD` | `admin` | Password auth (dev only) |
 | `ERPNEXT_DISCOVERY_INCLUDE` | (44 core DocTypes) | Comma-separated DocTypes to discover |
 | `ERPNEXT_DISCOVERY_EXCLUDE` | | Comma-separated DocTypes to skip |
-| `ERPNEXT_HTTP_HOST` | `127.0.0.1` | HTTP transport bind address |
-| `ERPNEXT_HTTP_PORT` | `3000` | HTTP transport port |
-| `ERPNEXT_MCP_API_KEY` | | API key for HTTP transport auth (empty = no auth) |
+| `HTTP_HOST` | `127.0.0.1` | HTTP transport bind address |
+| `HTTP_PORT` | `3000` | HTTP transport port |
+| `MCP_API_KEY` | | API key for HTTP transport auth (empty = no auth) |
 
 **Token auth** (production): set `ERPNEXT_API_KEY` + `ERPNEXT_API_SECRET`.
 
@@ -158,6 +158,46 @@ High-level operations that need business logic:
 - `prepare_payroll` — payroll with statutory breakdown
 - `purchase_order_workflow` — PO from stock levels
 - `manufacturing_report` — work order status + materials
+
+## Docker
+
+```bash
+# Build and run
+docker compose up -d
+
+# With custom ERPNext credentials
+ERPNEXT_URL=http://host.docker.internal:8080 \
+ERPNEXT_API_KEY=your_key \
+ERPNEXT_API_SECRET=your_secret \
+docker compose up -d
+```
+
+Docker Compose runs the server in HTTP mode on port 3000.
+
+### Known Issues / Pitfalls
+
+**DNS rebinding 421 in Docker (MCP SDK security)**
+
+FastMCP defaults to `host="127.0.0.1"` which auto-enables DNS rebinding protection with only `localhost` in `allowed_hosts`. When running in Docker, requests from other containers use `Host: service-name:port` (e.g., `Host: mcp-server:3000`) which gets rejected with `421 Misdirected Request`.
+
+Fix: pass `host=settings.http_host` to the `FastMCP()` constructor in `src/server.py`:
+```python
+mcp = FastMCP(
+    "erpnext",
+    host=settings.http_host,  # ← required for Docker
+    ...
+)
+```
+
+When `host="0.0.0.0"`, FastMCP skips the DNS rebinding check entirely. After changing, rebuild with `docker compose build --no-cache` (old layers cache the default).
+
+**`frappe.desk.form.meta.get_meta` returns 403**
+
+The discovery module fetches DocType metadata via `frappe.client.get(doctype="DocType", name=...)` instead. Do not use `frappe.desk.form.meta.get_meta` — it requires elevated permissions that API users don't have.
+
+**Env prefix removed**
+
+Config fields map directly to env vars: `ERPNEXT_URL`, `ERPNEXT_API_KEY`, `HTTP_HOST`, `HTTP_PORT`, `MCP_API_KEY`. There is no `ERPNEXT_` prefix on HTTP/MCP settings.
 
 ## Project Structure
 

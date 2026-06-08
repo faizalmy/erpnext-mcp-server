@@ -35,6 +35,7 @@ _start_time = time.time()
 
 mcp = FastMCP(
     "erpnext",
+    host=settings.http_host,
     instructions=(
         "ERPNext MCP Server: AI-native interface to ERPNext. "
         "Tools are auto-generated from your ERPNext DocTypes at startup. "
