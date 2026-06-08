@@ -114,8 +114,6 @@ At startup, the server:
 3. **Generates CRUD tools** — creates `list_*`, `get_*`, `create_*`, `update_*`, `delete_*` for each DocType with field-aware inputSchemas
 4. **Registers curated tools** — high-level tools for conversions, reports, and workflows
 
-**Result**: ~256 tools from ~200 lines of discovery code. No hardcoded tool definitions.
-
 ## Tool Categories
 
 ### Auto-discovered CRUD (220 tools)
