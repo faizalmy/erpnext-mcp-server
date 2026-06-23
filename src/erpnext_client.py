@@ -18,24 +18,39 @@ import httpx
 
 from .config import settings
 
-# Per-request credential overrides (set by HTTP dispatch from headers)
+# Per-request context overrides (set by HTTP dispatch from headers)
+_ctx_erpnext_url: contextvars.ContextVar[str | None] = contextvars.ContextVar("erpnext_url", default=None)
 _ctx_api_key: contextvars.ContextVar[str | None] = contextvars.ContextVar("erpnext_api_key", default=None)
 _ctx_api_secret: contextvars.ContextVar[str | None] = contextvars.ContextVar("erpnext_api_secret", default=None)
 
 
+def set_request_context(url: str | None = None, api_key: str | None = None, api_secret: str | None = None) -> None:
+    """Set per-request ERPNext context (URL + credentials, called from HTTP dispatch)."""
+    if url is not None:
+        _ctx_erpnext_url.set(url)
+    if api_key is not None:
+        _ctx_api_key.set(api_key)
+    if api_secret is not None:
+        _ctx_api_secret.set(api_secret)
+
+
 def set_request_credentials(api_key: str | None, api_secret: str | None) -> None:
-    """Set per-request ERPNext credentials (called from HTTP dispatch)."""
-    _ctx_api_key.set(api_key)
-    _ctx_api_secret.set(api_secret)
+    """Alias for backward compat — delegates to set_request_context."""
+    set_request_context(api_key=api_key, api_secret=api_secret)
+
+
+def get_request_url() -> str | None:
+    """Get the per-request ERPNext URL (used by discovery for cache keying)."""
+    return _ctx_erpnext_url.get()
 
 
 def _get_auth_header() -> dict[str, str]:
-    """Get auth header — per-request override or server default."""
+    """Get auth header from per-request context (empty if not set)."""
     api_key = _ctx_api_key.get()
     api_secret = _ctx_api_secret.get()
     if api_key and api_secret:
         return {"Authorization": f"token {api_key}:{api_secret}"}
-    return settings.auth_header
+    return {}
 
 
 class ERPNextClient:
@@ -51,41 +66,28 @@ class ERPNextClient:
     """
 
     def __init__(self):
-        headers = dict(settings.auth_header)
-        if settings.erpnext_host_header:
-            headers["Host"] = settings.erpnext_host_header
         self._client = httpx.Client(
-            headers=headers,
             timeout=settings.timeout,
             follow_redirects=True,
         )
-        self._logged_in = False
-        # Auto-login when using password auth (no API key)
-        if not settings.erpnext_api_key:
-            self._login()
 
     def close(self):
         self._client.close()
 
-    def _login(self):
-        """Password-based login (dev only). Creates session cookie."""
-        if self._logged_in:
-            return
-        r = self._client.post(
-            f"{settings.erpnext_url}/api/method/login",
-            json={"usr": settings.erpnext_usr, "pwd": settings.erpnext_pwd},
-        )
-        self._logged_in = r.json().get("message") == "Logged In"
-
-    def _request(self, method: str, url: str, **kwargs) -> httpx.Response:
-        """Make a request with per-request auth override if set."""
+    def _request(self, method: str, url_path: str, **kwargs) -> httpx.Response:
+        """Make a request using contextvar URL + relative path."""
+        base_url = _ctx_erpnext_url.get()
+        if not base_url:
+            raise RuntimeError(
+                "No ERPNext URL set for this request — tenant not configured. "
+                "Call set_request_context(url=...) before making requests."
+            )
+        full_url = f"{base_url}{url_path}"
         auth_header = _get_auth_header()
-        # Merge headers: per-request auth overrides default
-        if auth_header != settings.auth_header:
-            headers = kwargs.pop("headers", {})
-            headers.update(auth_header)
-            kwargs["headers"] = headers
-        return self._client.request(method, url, **kwargs)
+        headers = kwargs.pop("headers", {})
+        headers.update(auth_header)
+        kwargs["headers"] = headers
+        return self._client.request(method, full_url, **kwargs)
 
     # ═══════════════════════════════════════════════════════════
     # RESOURCE API (CRUD on any DocType)
@@ -103,32 +105,32 @@ class ERPNextClient:
             params["filters"] = json.dumps(filters)
         if order_by:
             params["order_by"] = order_by
-        r = self._request("GET", f"{settings.api_base}/{doctype}", params=params)
+        r = self._request("GET", f"/api/resource/{doctype}", params=params)
         r.raise_for_status()
         data = r.json()
         return {"data": data.get("data", []), "count": len(data.get("data", []))}
 
     def get_document(self, doctype: str, name: str) -> dict:
         """Get a single document by name."""
-        r = self._request("GET", f"{settings.api_base}/{doctype}/{name}")
+        r = self._request("GET", f"/api/resource/{doctype}/{name}")
         r.raise_for_status()
         return r.json().get("data", {})
 
     def create_document(self, doctype: str, data: dict) -> dict:
         """Create a new document."""
-        r = self._request("POST", f"{settings.api_base}/{doctype}", json=data)
+        r = self._request("POST", f"/api/resource/{doctype}", json=data)
         r.raise_for_status()
         return r.json().get("data", {})
 
     def update_document(self, doctype: str, name: str, data: dict) -> dict:
         """Update an existing document (partial update)."""
-        r = self._request("PUT", f"{settings.api_base}/{doctype}/{name}", json=data)
+        r = self._request("PUT", f"/api/resource/{doctype}/{name}", json=data)
         r.raise_for_status()
         return r.json().get("data", {})
 
     def delete_document(self, doctype: str, name: str) -> dict:
         """Delete a submitted document."""
-        r = self._request("DELETE", f"{settings.api_base}/{doctype}/{name}")
+        r = self._request("DELETE", f"/api/resource/{doctype}/{name}")
         r.raise_for_status()
         return {"message": "ok"}
 
@@ -136,7 +138,7 @@ class ERPNextClient:
         """Submit a draft document (finalize it)."""
         r = self._request(
             "POST",
-            f"{settings.method_base}/frappe.client.submit",
+            "/api/method/frappe.client.submit",
             json={"doctype": doctype, "name": name},
         )
         r.raise_for_status()
@@ -146,7 +148,7 @@ class ERPNextClient:
         """Cancel a submitted document."""
         r = self._request(
             "POST",
-            f"{settings.method_base}/frappe.client.cancel",
+            "/api/method/frappe.client.cancel",
             json={"doctype": doctype, "name": name},
         )
         r.raise_for_status()
@@ -159,9 +161,9 @@ class ERPNextClient:
     def call_method(self, method: str, **kwargs) -> dict:
         """Call any whitelisted ERPNext/Frappe method."""
         if kwargs:
-            r = self._request("POST", f"{settings.method_base}/{method}", json=kwargs)
+            r = self._request("POST", f"/api/method/{method}", json=kwargs)
         else:
-            r = self._request("GET", f"{settings.method_base}/{method}")
+            r = self._request("GET", f"/api/method/{method}")
         r.raise_for_status()
         return r.json().get("message", r.json())
 
@@ -417,5 +419,5 @@ class ERPNextClient:
         )
 
 
-# Singleton
+# Singleton — stateless httpx wrapper, per-request context is in contextvars
 erpnext = ERPNextClient()
