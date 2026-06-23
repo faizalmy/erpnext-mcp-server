@@ -51,8 +51,11 @@ class ERPNextClient:
     """
 
     def __init__(self):
+        headers = dict(settings.auth_header)
+        if settings.erpnext_host_header:
+            headers["Host"] = settings.erpnext_host_header
         self._client = httpx.Client(
-            headers=settings.auth_header,
+            headers=headers,
             timeout=settings.timeout,
             follow_redirects=True,
         )

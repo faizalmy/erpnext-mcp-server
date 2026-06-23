@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     erpnext_url: str = "http://localhost:8080"
     erpnext_api_key: str = ""
     erpnext_api_secret: str = ""
+    erpnext_host_header: str = ""  # Host header override (e.g. "frontend")
 
     # Auth fallback (password-based, for dev)
     erpnext_usr: str = "Administrator"
