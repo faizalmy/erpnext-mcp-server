@@ -272,11 +272,12 @@ def main():
             # Extract per-request ERPNext credentials from headers (multi-tenant)
             if scope["type"] == "http":
                 headers = dict(scope.get("headers", []))
+                x_erpnext_url = headers.get(b"x-erpnext-url", b"").decode() or None
                 x_api_key = headers.get(b"x-erpnext-api-key", b"").decode() or None
                 x_api_secret = headers.get(b"x-erpnext-api-secret", b"").decode() or None
-                if x_api_key and x_api_secret:
-                    from .erpnext_client import set_request_credentials
-                    set_request_credentials(x_api_key, x_api_secret)
+                if x_erpnext_url or (x_api_key and x_api_secret):
+                    from .erpnext_client import set_request_context
+                    set_request_context(url=x_erpnext_url, api_key=x_api_key, api_secret=x_api_secret)
 
             # Delegate to FastMCP
             return await mcp_app(scope, receive, send)

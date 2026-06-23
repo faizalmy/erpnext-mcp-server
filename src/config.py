@@ -10,16 +10,6 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     """Settings — point at any ERPNext instance."""
 
-    # ERPNext connection
-    erpnext_url: str = "http://localhost:8080"
-    erpnext_api_key: str = ""
-    erpnext_api_secret: str = ""
-    erpnext_host_header: str = ""  # Host header override (e.g. "frontend")
-
-    # Auth fallback (password-based, for dev)
-    erpnext_usr: str = "Administrator"
-    erpnext_pwd: str = "admin"
-
     # Discovery filter (comma-separated DocType names)
     discovery_include: str = ""   # Only these DocTypes (empty = all)
     discovery_exclude: str = ""   # Skip these DocTypes (empty = none)
@@ -48,23 +38,6 @@ class Settings(BaseSettings):
             return None
         return [s.strip() for s in self.discovery_exclude.split(",") if s.strip()]
 
-    @property
-    def api_base(self) -> str:
-        """Base URL for ERPNext REST API."""
-        return f"{self.erpnext_url}/api/resource"
-
-    @property
-    def method_base(self) -> str:
-        """Base URL for ERPNext method calls."""
-        return f"{self.erpnext_url}/api/method"
-
-    @property
-    def auth_header(self) -> dict[str, str]:
-        """Authentication header."""
-        h: dict[str, str] = {"Accept": "application/json", "Content-Type": "application/json"}
-        if self.erpnext_api_key and self.erpnext_api_secret:
-            h["Authorization"] = f"token {self.erpnext_api_key}:{self.erpnext_api_secret}"
-        return h
 
 
 settings = Settings()

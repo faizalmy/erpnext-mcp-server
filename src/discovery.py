@@ -9,6 +9,7 @@ startups are instant. Use --refresh or set ERPNEXT_CACHE_TTL=0 to force
 re-fetch from ERPNext.
 """
 
+import hashlib
 import json
 import logging
 import os
@@ -19,7 +20,7 @@ from typing import Any, Callable
 from mcp.server.fastmcp import FastMCP
 from pydantic import create_model, Field
 
-from .erpnext_client import erpnext
+from .erpnext_client import erpnext, get_request_url
 
 log = logging.getLogger(__name__)
 
@@ -48,7 +49,12 @@ def _get_cache_path() -> Path:
     """Resolve cache file path from env or default."""
     cache_dir = os.environ.get("ERPNEXT_CACHE_DIR", DEFAULT_CACHE_DIR)
     cache_file = os.environ.get("ERPNEXT_CACHE_FILE", DEFAULT_CACHE_FILE)
-    return Path(cache_dir) / cache_file
+    base_name = Path(cache_file).stem
+    suffix = Path(cache_file).suffix
+    # Key by tenant URL so each tenant has their own cache
+    url = get_request_url() or "default"
+    safe_key = hashlib.sha256(url.encode()).hexdigest()[:16]
+    return Path(cache_dir) / f"{base_name}_{safe_key}{suffix}"
 
 
 def _get_cache_ttl() -> int:

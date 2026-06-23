@@ -11,8 +11,7 @@ from urllib.parse import urlencode
 
 from mcp.server.fastmcp import FastMCP
 
-from ..config import settings
-from ..erpnext_client import erpnext
+from ..erpnext_client import erpnext, get_request_url
 
 TOOL_COUNT = 37
 
@@ -127,7 +126,7 @@ def _register_generic(mcp: FastMCP):
             filters: Optional dict of filter params for the list view.
                      Example: {"status": "Overdue", "customer": "West View Software"}
         """
-        base = settings.erpnext_url.rstrip("/")
+        base = (get_request_url() or "http://localhost:8080").rstrip("/")
         path = _doctype_to_url_path(doctype)
 
         url = f"{base}/desk/{path}"
