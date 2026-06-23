@@ -1,4 +1,8 @@
-"""Test erpnext-mcp-server via stdio transport using the official MCP client SDK."""
+"""Test erpnext-mcp-server via stdio transport using the official MCP client SDK.
+
+Manual integration test — requires running ERPNext at http://localhost:8080.
+Run directly: python tests/test_stdio.py
+"""
 import asyncio
 import json
 import pathlib
@@ -128,4 +132,5 @@ async def main():
             print(f'\n=== ALL STDIO TESTS PASSED ===')
 
 
-asyncio.run(main())
+if __name__ == "__main__":
+    asyncio.run(main())

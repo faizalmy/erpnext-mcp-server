@@ -8,7 +8,7 @@ import pytest
 import respx
 from httpx import Response
 
-from src.config import settings
+from src.erpnext_client import set_request_context
 
 
 @pytest.fixture
@@ -18,7 +18,7 @@ def mock_erpnext():
     Recreates the erpnext client singleton so it uses the mocked transport.
     """
     with respx.mock(assert_all_called=False) as respx_mock:
-        base = settings.erpnext_url
+        base = "http://test-erp:8080"
 
         # Mock login (for password auth auto-login)
         respx_mock.post(f"{base}/api/method/login").mock(
@@ -255,6 +255,7 @@ def mock_erpnext():
         from src import erpnext_client as ec_module
         old_client = ec_module.erpnext
         ec_module.erpnext = ec_module.ERPNextClient()
+        set_request_context(url="http://test-erp:8080", api_key="test-api-key", api_secret="test-api-secret")
 
         yield respx_mock
 
@@ -339,7 +340,7 @@ class TestCallMethod:
         from src.erpnext_client import erpnext
         import httpx
         # Override the mock to return 500
-        mock_erpnext.post(f"{settings.erpnext_url}/api/method/erpnext.stock.utils.get_stock_balance").mock(
+        mock_erpnext.post(f"{'http://test-erp:8080'}/api/method/erpnext.stock.utils.get_stock_balance").mock(
             return_value=Response(500, json={"exc": "Internal Server Error"})
         )
         with pytest.raises(httpx.HTTPStatusError):
@@ -348,7 +349,7 @@ class TestCallMethod:
     def test_call_method_no_message_key(self, mock_erpnext):
         """When response has no 'message' key, call_method returns full JSON."""
         from src.erpnext_client import erpnext
-        mock_erpnext.post(f"{settings.erpnext_url}/api/method/erpnext.accounts.utils.get_exchange_rate").mock(
+        mock_erpnext.post(f"{'http://test-erp:8080'}/api/method/erpnext.accounts.utils.get_exchange_rate").mock(
             return_value=Response(200, json={"result": 4.72})
         )
         result = erpnext.get_exchange_rate("USD", "MYR")
@@ -386,7 +387,7 @@ class TestAccounting:
     def test_get_fiscal_year(self, mock_erpnext):
         from src.erpnext_client import erpnext
         # When called with no args, call_method uses GET (not POST)
-        mock_erpnext.get(f"{settings.erpnext_url}/api/method/erpnext.accounts.utils.get_fiscal_year").mock(
+        mock_erpnext.get(f"{'http://test-erp:8080'}/api/method/erpnext.accounts.utils.get_fiscal_year").mock(
             return_value=Response(200, json={
                 "message": ["2026-2027", "2026-04-01", "2027-03-31"]
             })
@@ -666,28 +667,7 @@ class TestAssets:
 
 
 # ═══════════════════════════════════════════════════════════
-# Configuration tests
 # ═══════════════════════════════════════════════════════════
-
-class TestConfig:
-    """Test configuration loading."""
-
-    def test_api_base(self):
-        from src.config import Settings
-        s = Settings(erpnext_url="http://localhost:8080")
-        assert s.api_base == "http://localhost:8080/api/resource"
-
-    def test_method_base(self):
-        from src.config import Settings
-        s = Settings(erpnext_url="http://localhost:8080")
-        assert s.method_base == "http://localhost:8080/api/method"
-
-    def test_auth_header_token(self):
-        from src.config import Settings
-        s = Settings(erpnext_api_key="key123", erpnext_api_secret="secret456")
-        assert s.auth_header["Authorization"] == "token key123:secret456"
-
-    def test_auth_header_no_token(self):
-        from src.config import Settings
-        s = Settings(erpnext_api_key="", erpnext_api_secret="")
-        assert "Authorization" not in s.auth_header
+# Configuration tests — REMOVED (api_base/method_base/auth_header
+# no longer exist; connection config is per-request via contextvars)
+# ═══════════════════════════════════════════════════════════
