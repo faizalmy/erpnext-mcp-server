@@ -6,11 +6,15 @@ that go beyond simple CRUD: document workflows, conversions, reports.
 Auto-discovery handles the generic CRUD tools. These are the "smart" ones.
 """
 
+import re
+from urllib.parse import urlencode
+
 from mcp.server.fastmcp import FastMCP
 
+from ..config import settings
 from ..erpnext_client import erpnext
 
-TOOL_COUNT = 36
+TOOL_COUNT = 37
 
 
 def register(mcp: FastMCP):
@@ -24,6 +28,19 @@ def register(mcp: FastMCP):
     _register_manufacturing(mcp)
     _register_projects(mcp)
     _register_assets(mcp)
+
+
+def _doctype_to_url_path(doctype: str) -> str:
+    """Convert an ERPNext DocType name to its URL path slug.
+
+    Examples:
+        'Sales Invoice' -> 'sales-invoice'
+        'Purchase Order' -> 'purchase-order'
+        'Payment Entry' -> 'payment-entry'
+        'BOM' -> 'bom'
+        'Item' -> 'item'
+    """
+    return re.sub(r'\s+', '-', doctype).lower()
 
 
 # ═══════════════════════════════════════════════════════════
@@ -89,6 +106,53 @@ def _register_generic(mcp: FastMCP):
             name: Document name/ID to cancel
         """
         return erpnext.cancel_document(doctype, name)
+
+    @mcp.tool()
+    def get_erpnext_url(
+        doctype: str,
+        name: str | None = None,
+        filters: dict[str, str] | None = None,
+    ) -> dict:
+        """Generate a direct link to an ERPNext page for a given DocType.
+
+        Use this when the user asks for a link to open ERPNext directly,
+        e.g. "link to overdue invoices" or "take me to that customer record".
+
+        Returns a URL you can present to the user as a clickable link.
+
+        Args:
+            doctype: DocType name (e.g. 'Sales Invoice', 'Customer', 'Purchase Order')
+            name: Optional document name/ID for form view (e.g. 'SINV-00001').
+                  If omitted, generates a list view URL.
+            filters: Optional dict of filter params for the list view.
+                     Example: {"status": "Overdue", "customer": "West View Software"}
+        """
+        base = settings.erpnext_url.rstrip("/")
+        path = _doctype_to_url_path(doctype)
+
+        url = f"{base}/desk/{path}"
+
+        if name:
+            url = f"{url}/{name}"
+        elif filters:
+            qs = urlencode(filters)
+            url = f"{url}?{qs}"
+
+        description_parts = [f"Open {doctype}"]
+
+        if name:
+            description_parts.append(f"record \"{name}\"")
+        elif filters:
+            filter_desc = ", ".join(f"{k}={v}" for k, v in filters.items())
+            description_parts.append(f"filtered by ({filter_desc})")
+
+        return {
+            "url": url,
+            "doctype": doctype,
+            "name": name,
+            "filters": filters,
+            "description": " ".join(description_parts),
+        }
 
 
 # ═══════════════════════════════════════════════════════════
