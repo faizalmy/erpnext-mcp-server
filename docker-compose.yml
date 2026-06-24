@@ -14,7 +14,7 @@ services:
     build: .
     container_name: ai-erp-mcp
     ports:
-      - "3000:3000"
+      - "8090:3000"
     environment:
       # ERPNext connection
       ERPNEXT_URL: "${ERPNEXT_URL:-http://host.docker.internal:8080}"
