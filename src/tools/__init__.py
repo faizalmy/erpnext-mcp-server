@@ -1,6 +1,18 @@
-"""Tool modules for erpnext-mcp-server.
+"""Curated MCP tools — high-level ERPNext operations registered as FastMCP tools."""
 
-Tools come from two sources:
-1. Auto-discovery (discovery.py) — CRUD tools generated from DocType metadata
-2. Curated (curated.py) — high-level operations, conversions, reports
-"""
+from . import generic, accounting, selling, buying, stock, hr, manufacturing, projects, assets
+
+TOOL_COUNT = 37
+
+
+def register(mcp) -> None:
+    """Register all curated tools on the given FastMCP instance."""
+    generic.register(mcp)
+    accounting.register(mcp)
+    selling.register(mcp)
+    buying.register(mcp)
+    stock.register(mcp)
+    hr.register(mcp)
+    manufacturing.register(mcp)
+    projects.register(mcp)
+    assets.register(mcp)

@@ -24,7 +24,7 @@ from mcp.server.fastmcp import FastMCP
 
 from .config import settings
 from .discovery import discovery
-from .tools import curated
+from .tools import register, TOOL_COUNT
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
@@ -87,10 +87,10 @@ crud_count = discovery.register_tools(
 log.info("Auto-discovered %d CRUD tools", crud_count)
 
 # 2. Curated tools (conversions, reports, workflows)
-curated.register(mcp)
+register(mcp)
 log.info("Registered curated tools")
 
-_total_tools = crud_count + curated.TOOL_COUNT
+_total_tools = crud_count + TOOL_COUNT
 
 
 # ── MCP Resources (read-only structured data) ─────────────────
@@ -278,6 +278,15 @@ def main():
                 if x_erpnext_url or (x_api_key and x_api_secret):
                     from .erpnext_client import set_request_context
                     set_request_context(url=x_erpnext_url, api_key=x_api_key, api_secret=x_api_secret)
+                else:
+                    # Fallback to default ERPNext URL from env (no auth — not a shortcut,
+                    # the MCP server needs to discover DocTypes at startup and MongoDB
+                    # style: a default tenant is configured at the infrastructure level)
+                    import os
+                    default_url = os.environ.get("ERPNEXT_URL") or None
+                    if default_url:
+                        from .erpnext_client import set_request_context
+                        set_request_context(url=default_url)
 
             # Delegate to FastMCP
             return await mcp_app(scope, receive, send)
