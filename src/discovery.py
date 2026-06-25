@@ -20,6 +20,7 @@ from typing import Any, Callable
 from mcp.server.fastmcp import FastMCP
 from pydantic import create_model, Field
 
+from .config import settings
 from .erpnext_client import erpnext, get_request_url
 
 log = logging.getLogger(__name__)
@@ -213,12 +214,14 @@ class DiscoveryEngine:
         self._doctypes: list[str] = []
 
     def discover(self, include: list[str] | None = None,
-                 exclude: list[str] | None = None) -> list[str]:
+                 exclude: list[str] | None = None,
+                 modules: list[str] | None = None) -> list[str]:
         """Fetch available DocTypes from ERPNext.
 
         Args:
             include: Only discover these DocTypes (None = use defaults)
             exclude: Skip these DocTypes (None = no exclusions)
+            modules: Only discover DocTypes from these ERPNext modules (None = no filter)
 
         Returns:
             List of discovered DocType names.
@@ -227,10 +230,11 @@ class DiscoveryEngine:
         if include is None:
             include = DEFAULT_DISCOVERY_INCLUDE
         try:
+            filters = [["DocType", "istable", "!=", 1]]
             result = erpnext.list_documents(
                 "DocType",
                 fields=["name", "module", "issingle", "istable", "custom"],
-                filters=[["DocType", "istable", "!=", 1]],
+                filters=filters,
                 limit=9999,
             )
         except Exception as e:
@@ -247,6 +251,9 @@ class DiscoveryEngine:
             if item.get("issingle"):
                 continue
             if include and name not in include:
+                continue
+            # Module filter
+            if modules and item.get("module") not in modules:
                 continue
             doctypes.append(name)
 
@@ -280,10 +287,14 @@ class DiscoveryEngine:
                 fields=fields or schema_props or ["name"],
                 filters=filters, limit=limit,
             )
+        if settings.concise_descriptions:
+            desc = f"List {doctype} records."
+        else:
+            desc = (f"List {doctype} records. "
+                    f"Available fields: {', '.join(schema_props[:15])}")
         config = {
             "name": f"list_{safe}",
-            "description": (f"List {doctype} records. "
-                            f"Available fields: {', '.join(schema_props[:15])}"),
+            "description": desc,
             "annotations": {"readOnlyHint": True, "destructiveHint": False},
             "parameters": {
                 "type": "object",
@@ -375,10 +386,15 @@ class DiscoveryEngine:
 
         fn.__name__ = f"create_{safe}"
         fn.__qualname__ = f"create_{safe}"
-        desc = f"Create a new {doctype}."
-        if required:
-            desc += f" Required: {', '.join(required)}."
-        desc += f" Fields: {', '.join(list(schema.keys())[:20])}"
+        if settings.concise_descriptions:
+            desc = f"Create a new {doctype}."
+            if required:
+                desc += f" Required: {', '.join(required)}."
+        else:
+            desc = f"Create a new {doctype}."
+            if required:
+                desc += f" Required: {', '.join(required)}."
+            desc += f" Fields: {', '.join(list(schema.keys())[:20])}"
         config = {
             "name": f"create_{safe}",
             "description": desc,
@@ -425,6 +441,7 @@ class DiscoveryEngine:
     def register_tools(self, mcp: FastMCP,
                        include: list[str] | None = None,
                        exclude: list[str] | None = None,
+                       modules: list[str] | None = None,
                        force_refresh: bool = False) -> int:
         """Discover DocTypes and register CRUD tools on the MCP server.
 
@@ -444,7 +461,7 @@ class DiscoveryEngine:
                      len(self._doctypes), len(self._cache), cache_path)
         else:
             # Fresh fetch from ERPNext
-            doctypes = self.discover(include=include, exclude=exclude)
+            doctypes = self.discover(include=include, exclude=exclude, modules=modules)
             log.info("Fetching metadata for %d DocTypes...", len(doctypes))
             for dt in doctypes:
                 self.get_meta(dt)

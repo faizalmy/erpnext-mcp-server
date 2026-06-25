@@ -83,6 +83,7 @@ crud_count = discovery.register_tools(
     mcp,
     include=settings.discovery_include_list,
     exclude=settings.discovery_exclude_list,
+    modules=settings.discovery_modules_list,
     force_refresh=config["refresh"],
 )
 log.info("Auto-discovered %d CRUD tools", crud_count)
