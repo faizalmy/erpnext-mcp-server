@@ -18,6 +18,24 @@ import httpx
 
 from .config import settings
 
+
+def _truncate(data: dict) -> dict:
+    """Truncate response if it exceeds max_response_chars (0 = no limit)."""
+    limit = settings.max_response_chars
+    if not limit:
+        return data
+    raw = json.dumps(data, ensure_ascii=False)
+    if len(raw) <= limit:
+        return data
+    truncated = raw[:limit]
+    return {
+        "_truncated": True,
+        "_original_chars": len(raw),
+        "_limit": limit,
+        "_data_preview": truncated + '..."',
+    }
+
+
 # Per-request context overrides (set by HTTP dispatch from headers)
 _ctx_erpnext_url: contextvars.ContextVar[str | None] = contextvars.ContextVar("erpnext_url", default=None)
 _ctx_api_key: contextvars.ContextVar[str | None] = contextvars.ContextVar("erpnext_api_key", default=None)
@@ -108,13 +126,13 @@ class ERPNextClient:
         r = self._request("GET", f"/api/resource/{doctype}", params=params)
         r.raise_for_status()
         data = r.json()
-        return {"data": data.get("data", []), "count": len(data.get("data", []))}
+        return _truncate({"data": data.get("data", []), "count": len(data.get("data", []))})
 
     def get_document(self, doctype: str, name: str) -> dict:
         """Get a single document by name."""
         r = self._request("GET", f"/api/resource/{doctype}/{name}")
         r.raise_for_status()
-        return r.json().get("data", {})
+        return _truncate(r.json().get("data", {}))
 
     def create_document(self, doctype: str, data: dict) -> dict:
         """Create a new document."""
@@ -165,7 +183,7 @@ class ERPNextClient:
         else:
             r = self._request("GET", f"/api/method/{method}")
         r.raise_for_status()
-        return r.json().get("message", r.json())
+        return _truncate(r.json().get("message", r.json()))
 
     # ═══════════════════════════════════════════════════════════
     # CONVENIENCE METHODS
