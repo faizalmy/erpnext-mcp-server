@@ -1,24 +1,11 @@
 """Selling MCP tools — URL generation and document conversions for the sales pipeline."""
 
-import re
 from urllib.parse import urlencode
 
 from mcp.server.fastmcp import FastMCP
 
 from ..erpnext_client import erpnext, get_request_url
-
-
-def _doctype_to_url_path(doctype: str) -> str:
-    """Convert an ERPNext DocType name to its URL path slug.
-
-    Examples:
-        'Sales Invoice' -> 'sales-invoice'
-        'Purchase Order' -> 'purchase-order'
-        'Payment Entry' -> 'payment-entry'
-        'BOM' -> 'bom'
-        'Item' -> 'item'
-    """
-    return re.sub(r'\s+', '-', doctype).lower()
+from .utils import doctype_to_url_path
 
 
 def register(mcp: FastMCP):
@@ -44,7 +31,7 @@ def register(mcp: FastMCP):
                      Example: {"status": "Overdue", "customer": "West View Software"}
         """
         base = (get_request_url() or "http://localhost:8080").rstrip("/")
-        path = _doctype_to_url_path(doctype)
+        path = doctype_to_url_path(doctype)
 
         url = f"{base}/desk/{path}"
 
