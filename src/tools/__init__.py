@@ -2,9 +2,6 @@
 
 from . import generic, accounting, selling, buying, stock, hr, manufacturing, projects, assets
 
-TOOL_COUNT = 37
-
-
 def register(mcp) -> None:
     """Register all curated tools on the given FastMCP instance."""
     generic.register(mcp)
