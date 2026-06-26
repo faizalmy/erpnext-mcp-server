@@ -52,11 +52,6 @@ def set_request_context(url: str | None = None, api_key: str | None = None, api_
         _ctx_api_secret.set(api_secret)
 
 
-def set_request_credentials(api_key: str | None, api_secret: str | None) -> None:
-    """Alias for backward compat — delegates to set_request_context."""
-    set_request_context(api_key=api_key, api_secret=api_secret)
-
-
 def get_request_url() -> str | None:
     """Get the per-request ERPNext URL (used by discovery for cache keying)."""
     return _ctx_erpnext_url.get()
