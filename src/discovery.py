@@ -40,10 +40,10 @@ from .discovery_cache import (
     DEFAULT_CACHE_DIR,
     DEFAULT_CACHE_FILE,
     DEFAULT_CACHE_TTL,
-    get_cache_path as _get_cache_path,
-    get_cache_ttl as _get_cache_ttl,
-    load_cache as _load_cache,
-    save_cache as _save_cache,
+    get_cache_path,
+    get_cache_ttl,
+    load_cache,
+    save_cache,
 )
 
 
@@ -450,8 +450,8 @@ class DiscoveryEngine:
 
         Returns the number of tools registered.
         """
-        cache_path = _get_cache_path()
-        cached = None if force_refresh else _load_cache(cache_path)
+        cache_path = get_cache_path()
+        cached = None if force_refresh else load_cache(cache_path)
 
         if cached:
             # Load from cache — instant startup
@@ -467,7 +467,7 @@ class DiscoveryEngine:
                 self.get_meta(dt)
 
             # Save to cache
-            _save_cache(cache_path, {
+            save_cache(cache_path, {
                 "doctypes": self._doctypes,
                 "metadata": self._cache,
             })

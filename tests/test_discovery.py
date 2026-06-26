@@ -11,12 +11,14 @@ from src.discovery import (
     _build_schema,
     _get_required_fields,
     _sanitize_json_schema,
-    _load_cache,
-    _save_cache,
-    _get_cache_path,
-    _get_cache_ttl,
     DiscoveryEngine,
     DEFAULT_DISCOVERY_INCLUDE,
+)
+from src.discovery_cache import (
+    load_cache as _load_cache,
+    save_cache as _save_cache,
+    get_cache_path as _get_cache_path,
+    get_cache_ttl as _get_cache_ttl,
 )
 
 
@@ -547,8 +549,8 @@ class TestDiscoveryEngineRegisterTools:
         mcp.tool = fake_tool
 
         with patch("src.discovery.erpnext", mock_client), \
-             patch("src.discovery._load_cache", return_value=None), \
-             patch("src.discovery._save_cache"):
+             patch("src.discovery.load_cache", return_value=None), \
+             patch("src.discovery.save_cache"):
             count = engine.register_tools(mcp, include=["Customer"], force_refresh=True)
 
         assert count == 5  # list, get, create, update, delete
@@ -578,8 +580,8 @@ class TestDiscoveryEngineRegisterTools:
         mcp.tool = fake_tool
 
         with patch("src.discovery.erpnext", mock_client), \
-             patch("src.discovery._load_cache", return_value=None), \
-             patch("src.discovery._save_cache"):
+             patch("src.discovery.load_cache", return_value=None), \
+             patch("src.discovery.save_cache"):
             engine.register_tools(mcp, include=["Customer"], force_refresh=True)
 
         assert "list_Customer" in registered
