@@ -330,7 +330,7 @@ class TestCache:
         cache_file = tmp_path / "expired.json"
         data = {"doctypes": ["Customer"], "_cached_at": time.time() - 200000}
         cache_file.write_text(json.dumps(data))
-        with patch("src.discovery._get_cache_ttl", return_value=86400):
+        with patch("src.discovery_cache.get_cache_ttl", return_value=86400):
             result = _load_cache(cache_file)
         assert result is None
 
@@ -355,7 +355,7 @@ class TestCache:
         cache_file = tmp_path / "ttl0.json"
         data = {"doctypes": ["X"], "_cached_at": time.time() - 999999}
         cache_file.write_text(json.dumps(data))
-        with patch("src.discovery._get_cache_ttl", return_value=0):
+        with patch("src.discovery_cache.get_cache_ttl", return_value=0):
             result = _load_cache(cache_file)
         assert result is not None
 
