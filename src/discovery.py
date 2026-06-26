@@ -206,6 +206,44 @@ def _get_required_fields(meta: dict, schema_keys: set) -> list[str]:
     ]
 
 
+def _sanitize_json_schema(schema: dict) -> dict:
+    """Strip fields DeepSeek rejects from JSON Schema."""
+    if not isinstance(schema, dict):
+        return schema
+
+    # anyOf/oneOf with null branch -> take non-null branch
+    for key in ("anyOf", "oneOf"):
+        if key in schema:
+            non_null = [v for v in schema[key] if v.get("type") != "null"]
+            if len(non_null) == 1:
+                return _sanitize_json_schema(non_null[0])
+            schema[key] = [_sanitize_json_schema(v) for v in non_null]
+
+    # Strip non-standard keys
+    for k in ("title", "additionalProperties", "$schema", "$id"):
+        schema.pop(k, None)
+
+    # Empty items -> {type: "string"}
+    if "items" in schema and not schema["items"]:
+        schema["items"] = {"type": "string"}
+
+    # Array without items -> add {type: "string"}
+    if schema.get("type") == "array" and "items" not in schema:
+        schema["items"] = {"type": "string"}
+
+    # Recurse into properties
+    if "properties" in schema:
+        schema["properties"] = {
+            k: _sanitize_json_schema(v)
+            for k, v in schema["properties"].items()
+        }
+    # Recurse into items
+    if "items" in schema:
+        schema["items"] = _sanitize_json_schema(schema["items"])
+
+    return schema
+
+
 class DiscoveryEngine:
     """Fetches ERPNext DocTypes and generates CRUD MCP tools."""
 
@@ -296,7 +334,7 @@ class DiscoveryEngine:
             "name": f"list_{safe}",
             "description": desc,
             "annotations": {"readOnlyHint": True, "destructiveHint": False},
-            "parameters": {
+            "parameters": _sanitize_json_schema({
                 "type": "object",
                 "properties": {
                     "limit": {"type": "integer", "default": 20,
@@ -306,7 +344,7 @@ class DiscoveryEngine:
                     "fields": {"type": "array", "items": {"type": "string"},
                                "description": "Fields to return (default: first 15)"},
                 },
-            },
+            }),
         }
         return fn, config
 
@@ -395,10 +433,13 @@ class DiscoveryEngine:
             if required:
                 desc += f" Required: {', '.join(required)}."
             desc += f" Fields: {', '.join(list(schema.keys())[:20])}"
+        raw_schema = DataModel.model_json_schema()
+        clean_params = _sanitize_json_schema(raw_schema)
         config = {
             "name": f"create_{safe}",
             "description": desc,
             "annotations": {"readOnlyHint": False, "destructiveHint": False},
+            "parameters": clean_params,
         }
         return fn, config
 
@@ -412,10 +453,13 @@ class DiscoveryEngine:
 
         fn.__name__ = f"update_{safe}"
         fn.__qualname__ = f"update_{safe}"
+        raw_schema = DataModel.model_json_schema()
+        clean_params = _sanitize_json_schema(raw_schema)
         config = {
             "name": f"update_{safe}",
             "description": f"Update an existing {doctype} (partial update).",
             "annotations": {"readOnlyHint": False, "destructiveHint": False},
+            "parameters": clean_params,
         }
         return fn, config
 
@@ -427,14 +471,14 @@ class DiscoveryEngine:
             "name": f"delete_{safe}",
             "description": f"Delete a {doctype} permanently.",
             "annotations": {"readOnlyHint": False, "destructiveHint": True},
-            "parameters": {
+            "parameters": _sanitize_json_schema({
                 "type": "object",
                 "properties": {
                     "name": {"type": "string",
                              "description": f"The {doctype} name or ID to delete"},
                 },
                 "required": ["name"],
-            },
+            }),
         }
         return fn, config
 
@@ -497,6 +541,7 @@ class DiscoveryEngine:
                         name=config["name"],
                         description=config["description"],
                         annotations=config.get("annotations"),
+                        parameters=config.get("parameters"),
                     )(fn)
                     tool_count += 1
                 except Exception as e:
